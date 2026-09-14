@@ -3,17 +3,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { db } from "../../infrastructure/db/client";
 import {
   auditEvents,
-  deadlines,
-  households,
-  householdMemberships,
   inboxItems,
-  notifications,
-  outboxEvents,
-  people,
-  sessionRevocations,
-  taskPeople,
   tasks,
-  users,
 } from "../../db/schema";
 import { bootstrapHousehold } from "../../application/commands/household/bootstrapHousehold";
 import { captureInboxItem } from "../../application/commands/inbox/captureInboxItem";
@@ -24,18 +15,13 @@ import { getTasks } from "../../application/queries/tasks/getTasks";
 import { getAttention, getToday } from "../../application/queries/attention/getAttention";
 import { ConflictError } from "../../application/errors";
 import type { Actor } from "../../application/policies/authorize";
+import { resetDatabase } from "../support/database";
 
 /**
  * Capture -> Triage -> Execute -> Follow up, against a real database
  * (docs/requirements/product-spec.md's primary journeys). Requires
  * DATABASE_URL to point at a disposable development database.
  */
-
-async function resetDatabase() {
-  await db.execute(
-    sql`truncate table ${notifications}, ${outboxEvents}, ${auditEvents}, ${deadlines}, ${taskPeople}, ${tasks}, ${inboxItems}, ${people}, ${householdMemberships}, ${households}, ${sessionRevocations}, ${users} cascade`
-  );
-}
 
 beforeEach(resetDatabase);
 afterAll(resetDatabase);

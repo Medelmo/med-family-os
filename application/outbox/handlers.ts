@@ -117,6 +117,25 @@ async function handleCaseFollowUpDue(
   });
 }
 
+async function handleReimbursementFollowUpDue(
+  handle: Handle,
+  householdId: string,
+  payload: PayloadOf<"reimbursement.follow_up_due">
+): Promise<void> {
+  // A claim has no owning person, so there is only the creator to tell.
+  if (!payload.createdBy) return;
+
+  await notify(handle, householdId, {
+    userId: payload.createdBy,
+    type: "reimbursement.follow_up_due",
+    title: payload.reimbursementTitle,
+    body: payload.counterparty,
+    resourceType: "reimbursement",
+    resourceId: payload.reimbursementId,
+    dedupeKey: `reimbursement.follow_up_due:${payload.reimbursementId}:${payload.followUpAt}`,
+  });
+}
+
 async function handleDeadlineApproaching(
   handle: Handle,
   householdId: string,
@@ -139,5 +158,6 @@ export const OUTBOX_HANDLERS: Record<OutboxEventType, OutboxHandler> = {
   "task.assigned": handleTaskAssigned as OutboxHandler,
   "task.follow_up_due": handleTaskFollowUpDue as OutboxHandler,
   "case.follow_up_due": handleCaseFollowUpDue as OutboxHandler,
+  "reimbursement.follow_up_due": handleReimbursementFollowUpDue as OutboxHandler,
   "deadline.approaching": handleDeadlineApproaching as OutboxHandler,
 };

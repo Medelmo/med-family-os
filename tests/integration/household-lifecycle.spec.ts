@@ -1,24 +1,12 @@
 import { sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { db } from "../../infrastructure/db/client";
-import {
-  auditEvents,
-  deadlines,
-  households,
-  householdMemberships,
-  inboxItems,
-  notifications,
-  outboxEvents,
-  people,
-  sessionRevocations,
-  taskPeople,
-  tasks,
-  users,
-} from "../../db/schema";
+import { auditEvents } from "../../db/schema";
 import { bootstrapHousehold, BootstrapNotAllowedError } from "../../application/commands/household/bootstrapHousehold";
 import { addHouseholdMember } from "../../application/commands/household/addHouseholdMember";
 import { getHouseholdMembers } from "../../application/queries/household/getHouseholdMembers";
 import { AuthorizationError } from "../../application/errors";
+import { resetDatabase } from "../support/database";
 
 /**
  * Exercises the Phase 1 vertical slice (authentication -> household ->
@@ -31,12 +19,6 @@ import { AuthorizationError } from "../../application/errors";
  *   port to localhost for local dev; see that file's comment)
  *   pnpm db:migrate
  */
-
-async function resetDatabase() {
-  await db.execute(
-    sql`truncate table ${notifications}, ${outboxEvents}, ${auditEvents}, ${deadlines}, ${taskPeople}, ${tasks}, ${inboxItems}, ${people}, ${householdMemberships}, ${households}, ${sessionRevocations}, ${users} cascade`
-  );
-}
 
 beforeEach(resetDatabase);
 afterAll(resetDatabase);

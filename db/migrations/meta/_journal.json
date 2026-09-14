@@ -43,6 +43,13 @@
       "when": 1789374700572,
       "tag": "0005_majestic_medusa",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789380527113,
+      "tag": "0006_sticky_smiling_tiger",
+      "breakpoints": true
     }
   ]
 }

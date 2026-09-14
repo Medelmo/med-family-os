@@ -1,6 +1,6 @@
 import { and, eq, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "../../infrastructure/db/client";
-import { cases, deadlines, tasks } from "../../db/schema";
+import { cases, deadlines, reimbursements, tasks } from "../../db/schema";
 import { emitOutboxEvent } from "../outbox/emitOutboxEvent";
 import { toIsoDate } from "../../domain/attention/rules";
 
@@ -16,6 +16,7 @@ export const DEADLINE_REMINDER_WINDOW_DAYS = 7;
 export interface ReminderScanResult {
   taskFollowUps: number;
   caseFollowUps: number;
+  reimbursementFollowUps: number;
   deadlines: number;
 }
 
@@ -39,13 +40,72 @@ export interface ReminderScanResult {
  * command has to remember to reset a flag.
  */
 export async function scanForReminders(now: Date = new Date()): Promise<ReminderScanResult> {
-  const result: ReminderScanResult = { taskFollowUps: 0, caseFollowUps: 0, deadlines: 0 };
+  const result: ReminderScanResult = {
+    taskFollowUps: 0,
+    caseFollowUps: 0,
+    reimbursementFollowUps: 0,
+    deadlines: 0,
+  };
 
   result.taskFollowUps = await scanTaskFollowUps(now);
   result.caseFollowUps = await scanCaseFollowUps(now);
+  result.reimbursementFollowUps = await scanReimbursementFollowUps(now);
   result.deadlines = await scanDeadlines(now);
 
   return result;
+}
+
+/**
+ * Claims whose chase date has arrived.
+ *
+ * Same structure as the task and case scans, deliberately: an unresolved
+ * reimbursement is the example product-spec.md gives of something that
+ * quietly costs a household real money by being forgotten, and it is
+ * forgotten in exactly the way a waiting task is.
+ *
+ * The payload carries no amount. Notification text is stored and rendered
+ * in places a claim's own authorization does not reach, and CLAUDE.md §12
+ * forbids sensitive data in those paths — the title and counterparty are
+ * enough to act on.
+ */
+async function scanReimbursementFollowUps(now: Date): Promise<number> {
+  return db.transaction(async (tx) => {
+    const due = await tx
+      .select()
+      .from(reimbursements)
+      .where(
+        and(
+          eq(reimbursements.status, "WAITING"),
+          lte(reimbursements.followUpAt, now),
+          or(
+            isNull(reimbursements.followUpNotifiedAt),
+            sql`${reimbursements.followUpNotifiedAt} < ${reimbursements.followUpAt}`
+          )
+        )
+      )
+      .limit(100)
+      .for("update", { skipLocked: true });
+
+    for (const claim of due) {
+      await emitOutboxEvent(tx, claim.householdId, {
+        type: "reimbursement.follow_up_due",
+        payload: {
+          reimbursementId: claim.id,
+          reimbursementTitle: claim.title,
+          counterparty: claim.counterparty,
+          createdBy: claim.createdBy,
+          followUpAt: (claim.followUpAt ?? now).toISOString(),
+        },
+      });
+
+      await tx
+        .update(reimbursements)
+        .set({ followUpNotifiedAt: claim.followUpAt })
+        .where(eq(reimbursements.id, claim.id));
+    }
+
+    return due.length;
+  });
 }
 
 async function scanTaskFollowUps(now: Date): Promise<number> {

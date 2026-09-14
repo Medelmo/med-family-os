@@ -3,6 +3,7 @@ import { db } from "../../../infrastructure/db/client";
 import { deadlines } from "../../../db/schema";
 import { getHouseholdTimezone, getTasks, type TaskListItem } from "../tasks/getTasks";
 import { getCases, type CaseListItem } from "../cases/getCases";
+import { getReimbursements, type ReimbursementListItem } from "../finance/getFinance";
 import { getCalendarOccurrences, type CalendarOccurrence } from "../calendar/getCalendarEvents";
 import { householdToday } from "../../time";
 import { wallClockToInstant } from "../../../domain/calendar/timezone";
@@ -35,21 +36,67 @@ export async function getAttention(
   now: Date = new Date(),
   config?: AttentionRuleConfig
 ): Promise<{ items: AttentionItem[]; todayIso: string }> {
-  const [timezone, tasks, cases] = await Promise.all([
+  const [timezone, tasks, cases, claims] = await Promise.all([
     getHouseholdTimezone(householdId),
     getTasks(actor, householdId),
     getCases(actor, householdId),
+    getReimbursements(actor, householdId),
   ]);
   const todayIso = householdToday(timezone, now);
 
   const items = projectAttention(
-    [...tasks.map(taskToCandidate), ...cases.map(caseToCandidate)],
+    [...tasks.map(taskToCandidate), ...cases.map(caseToCandidate), ...claims.map(reimbursementToCandidate)],
     todayIso,
     now,
     config
   );
 
   return { items, todayIso };
+}
+
+/**
+ * Maps an open claim onto the rules' normalised shape.
+ *
+ * product-spec.md lists "unresolved reimbursement" as an attention
+ * trigger. It needs no new rule: a claim sitting on a counterparty *is* a
+ * wait, so FOLLOW_UP_DUE, WAITING_TOO_LONG and WAITING_INDEFINITELY apply
+ * unchanged. That reuse is exactly what normalising the candidate shape in
+ * Phase 3 was for.
+ *
+ * A claim that has been APPROVED but not yet paid is treated as waiting
+ * too, with its waiting clock running from the decision: an approval that
+ * never turns into money is precisely the case a household forgets about.
+ * PLANNED is actionable rather than waiting — nobody else is holding it
+ * up; it is sitting in the household's own inbox.
+ */
+function reimbursementToCandidate(claim: ReimbursementListItem): AttentionCandidate {
+  const waitingOnCounterparty = claim.status === "WAITING" || claim.status === "SUBMITTED";
+  const awaitingMoney = claim.status === "APPROVED" || claim.status === "PARTIALLY_REIMBURSED";
+
+  return {
+    id: claim.id,
+    kind: "reimbursement",
+    title: claim.title,
+    // Claims carry no priority of their own; NORMAL keeps them ranked by
+    // how long they have actually been stuck rather than by a number
+    // nobody set.
+    priority: "NORMAL",
+    dueOn: null,
+    waiting:
+      waitingOnCounterparty || awaitingMoney
+        ? {
+            since: claim.waitingSince,
+            followUpAt: claim.followUpAt,
+            indefinite: claim.followUpAt === null && claim.waitingNoFollowUpReason !== null,
+          }
+        : null,
+    blocked: null,
+    actionable: claim.status === "PLANNED",
+    // A planned claim's next action is to submit it; the domain refuses to
+    // submit one with nothing attached, so "no next action" here means the
+    // household has opened a claim and not yet said what it is for.
+    nextAction: claim.counterparty,
+  };
 }
 
 /**

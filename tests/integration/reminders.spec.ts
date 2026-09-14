@@ -1,23 +1,10 @@
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { db } from "../../infrastructure/db/client";
 import {
-  auditEvents,
-  caseEvents,
-  casePeople,
-  caseTasks,
-  cases,
   deadlines,
-  households,
-  householdMemberships,
-  inboxItems,
-  notifications,
   outboxEvents,
-  people,
-  sessionRevocations,
-  taskPeople,
   tasks,
-  users,
 } from "../../db/schema";
 import { bootstrapHousehold } from "../../application/commands/household/bootstrapHousehold";
 import { addHouseholdMember } from "../../application/commands/household/addHouseholdMember";
@@ -30,18 +17,13 @@ import { scanForReminders } from "../../application/reminders/scanForReminders";
 import { processOutbox } from "../../application/outbox/processOutbox";
 import { getNotifications } from "../../application/queries/notifications/getNotifications";
 import type { Actor } from "../../application/policies/authorize";
+import { resetDatabase } from "../support/database";
 
 /**
  * Time-triggered reminders: the scheduled producer for the outbox
  * (ADR-004/ADR-013). Requires DATABASE_URL to point at a disposable
  * development database.
  */
-
-async function resetDatabase() {
-  await db.execute(
-    sql`truncate table ${caseEvents}, ${caseTasks}, ${casePeople}, ${cases}, ${notifications}, ${outboxEvents}, ${auditEvents}, ${deadlines}, ${taskPeople}, ${tasks}, ${inboxItems}, ${people}, ${householdMemberships}, ${households}, ${sessionRevocations}, ${users} cascade`
-  );
-}
 
 beforeEach(resetDatabase);
 afterAll(resetDatabase);

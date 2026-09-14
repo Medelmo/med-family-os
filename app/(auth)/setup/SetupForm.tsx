@@ -6,6 +6,7 @@ import { submitSetup, type SetupFormState } from "./actions";
 import { TextField } from "../../../components/ui/TextField";
 import { Button } from "../../../components/ui/Button";
 import styles from "../auth-panel.module.css";
+import { useHydrated } from "../../../components/ui/useHydrated";
 
 const initialState: SetupFormState = {};
 
@@ -18,6 +19,7 @@ const ERROR_MESSAGE_KEYS = {
 export function SetupForm() {
   const t = useTranslations("setup");
   const [state, formAction, isPending] = useActionState(submitSetup, initialState);
+  const hydrated = useHydrated();
 
   return (
     <form action={formAction} className={styles.form}>
@@ -38,7 +40,7 @@ export function SetupForm() {
           {t(ERROR_MESSAGE_KEYS[state.error as keyof typeof ERROR_MESSAGE_KEYS] ?? "errorUnknown")}
         </p>
       )}
-      <Button type="submit" disabled={isPending}>
+      <Button type="submit" disabled={isPending || !hydrated}>
         {t("submit")}
       </Button>
     </form>

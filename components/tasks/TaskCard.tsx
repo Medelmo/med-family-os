@@ -6,6 +6,7 @@ import { submitTaskTransition, type TaskActionState } from "../../app/(app)/task
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import styles from "./TaskCard.module.css";
+import { useHydrated } from "../ui/useHydrated";
 
 const EMPTY: TaskActionState = {};
 
@@ -52,6 +53,7 @@ const ACTIONS_BY_STATUS: Record<TaskStatusName, { action: string; labelKey: stri
 export function TaskCard({ task }: { task: TaskCardData }) {
   const t = useTranslations("tasks");
   const [state, formAction, isPending] = useActionState(submitTaskTransition, EMPTY);
+  const hydrated = useHydrated();
   const errorKey = state.error ? (ERROR_KEYS[state.error as keyof typeof ERROR_KEYS] ?? "errorIllegalTransition") : null;
 
   return (
@@ -100,7 +102,7 @@ export function TaskCard({ task }: { task: TaskCardData }) {
             <input type="hidden" name="taskId" value={task.id} />
             <input type="hidden" name="expectedVersion" value={task.version} />
             <input type="hidden" name="action" value={action} />
-            <Button type="submit" variant={variant} disabled={isPending}>
+            <Button type="submit" variant={variant} disabled={isPending || !hydrated}>
               {t(`actions.${labelKey}`)}
             </Button>
           </form>

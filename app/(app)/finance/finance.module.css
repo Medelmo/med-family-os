@@ -1,0 +1,306 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 760px;
+}
+
+.title {
+  font-size: var(--text-h1-size);
+  line-height: var(--text-h1-line);
+  margin: 0 0 var(--space-2);
+}
+
+.subtitle {
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-line);
+  margin: 0 0 var(--space-4);
+}
+
+.description,
+.hint {
+  margin: 0 0 var(--space-3);
+  color: var(--color-text-secondary);
+}
+
+.breadcrumb {
+  margin: 0;
+  font-size: var(--text-compact-size);
+}
+
+/* --- Month navigation --- */
+
+.monthNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.month {
+  margin: 0;
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-line);
+}
+
+/* --- Totals --- */
+
+.totals,
+.list,
+.plainList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.total {
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-line);
+  font-weight: 700;
+}
+
+/* --- Budgets --- */
+
+.budget,
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.budgetHeader,
+.itemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.budgetCategory,
+.itemTitle {
+  margin: 0;
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-line);
+}
+
+.itemTitle a {
+  color: inherit;
+}
+
+.budgetFigures {
+  margin: 0;
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-line);
+}
+
+/* The health badge always carries its own words; the colour is a second
+   signal, never the only one (CLAUDE.md §13). */
+.health,
+.status {
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+  font-weight: 600;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.health[data-health="NEAR"],
+.status[data-status="WAITING"],
+.status[data-status="SUBMITTED"] {
+  color: var(--color-warning);
+  background: var(--color-warning-surface);
+  border-color: transparent;
+}
+
+.health[data-health="OVER"],
+.status[data-status="REJECTED"] {
+  color: var(--color-critical);
+  background: var(--color-critical-surface);
+  border-color: transparent;
+}
+
+.health[data-health="UNDER"],
+.status[data-status="PAID"],
+.status[data-status="COMPLETED"] {
+  color: var(--color-success);
+  background: var(--color-success-surface);
+  border-color: transparent;
+}
+
+.status[data-status="APPROVED"],
+.status[data-status="PARTIALLY_REIMBURSED"] {
+  color: var(--color-info);
+  background: var(--color-info-surface);
+  border-color: transparent;
+}
+
+.meta {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+}
+
+.notice {
+  margin: var(--space-3) 0 0;
+  color: var(--color-warning);
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+}
+
+/* --- Expense table --- */
+
+/* A table because this is tabular data, so a screen reader announces
+   "row 3, Amount, 60 euros" rather than a run-on line. It is the one
+   element allowed to scroll sideways on a phone, inside its own
+   container. */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-compact-size);
+}
+
+.table th,
+.table td {
+  text-align: start;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+}
+
+.table th {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.tableCaption {
+  caption-side: top;
+  text-align: start;
+  padding-bottom: var(--space-2);
+  color: var(--color-text-secondary);
+}
+
+.numeric {
+  text-align: end;
+  white-space: nowrap;
+}
+
+.tag {
+  display: inline-block;
+  margin-inline-start: var(--space-2);
+  font-size: var(--text-compact-size);
+}
+
+/* --- Claim detail --- */
+
+.definitions {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.definitions dt {
+  color: var(--color-text-secondary);
+}
+
+.definitions dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.expenseRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.actionCard,
+.actionForm {
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.timelineEntry {
+  display: flex;
+  gap: var(--space-3);
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+}
+
+.timelineEntry time {
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+/* --- Forms --- */
+
+.form {
+  display: flex;
+  flex-direction: column;
+}
+
+.fieldset {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  margin: 0 0 var(--space-4);
+}
+
+.legend {
+  padding: 0 var(--space-2);
+  font-weight: 600;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  /* A comfortable target, per WCAG 2.2 SC 2.5.8. */
+  min-height: 44px;
+  padding: var(--space-1) 0;
+}
+
+.empty {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.error {
+  margin: 0 0 var(--space-3);
+  color: var(--color-critical);
+  font-size: var(--text-compact-size);
+}
+
+@media (max-width: 600px) {
+  .definitions {
+    grid-template-columns: 1fr;
+    gap: var(--space-1) 0;
+  }
+}

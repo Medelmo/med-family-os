@@ -7,6 +7,7 @@ import { Button } from "../../../components/ui/Button";
 import { TextField } from "../../../components/ui/TextField";
 import { Card } from "../../../components/ui/Card";
 import styles from "./cases.module.css";
+import { useHydrated } from "../../../components/ui/useHydrated";
 
 const EMPTY: CaseFormState = {};
 
@@ -27,6 +28,7 @@ export function useCaseErrorMessage() {
 export function OpenCaseForm() {
   const t = useTranslations("cases");
   const [state, formAction, isPending] = useActionState(submitCreateCase, EMPTY);
+  const hydrated = useHydrated();
   const message = useCaseErrorMessage()(state.error);
 
   return (
@@ -40,7 +42,7 @@ export function OpenCaseForm() {
             {message}
           </p>
         )}
-        <Button type="submit" disabled={isPending}>
+        <Button type="submit" disabled={isPending || !hydrated}>
           {t("openCase")}
         </Button>
       </form>

@@ -1,23 +1,7 @@
-import { sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { db } from "../../infrastructure/db/client";
 import {
   auditEvents,
-  caseEvents,
-  casePeople,
-  caseTasks,
-  cases,
-  deadlines,
-  households,
-  householdMemberships,
-  inboxItems,
-  notifications,
-  outboxEvents,
-  people,
-  sessionRevocations,
-  taskPeople,
-  tasks,
-  users,
 } from "../../db/schema";
 import { bootstrapHousehold } from "../../application/commands/household/bootstrapHousehold";
 import { addHouseholdMember } from "../../application/commands/household/addHouseholdMember";
@@ -30,6 +14,7 @@ import { captureInboxItem } from "../../application/commands/inbox/captureInboxI
 import { triageInboxItemToTask } from "../../application/commands/inbox/triageInboxItem";
 import { AuthorizationError, ConflictError, NotFoundError } from "../../application/errors";
 import type { Actor } from "../../application/policies/authorize";
+import { resetDatabase } from "../support/database";
 
 /**
  * Case -> next action -> waiting -> timeline -> linked work
@@ -37,12 +22,6 @@ import type { Actor } from "../../application/policies/authorize";
  * real database. Requires DATABASE_URL to point at a disposable
  * development database.
  */
-
-async function resetDatabase() {
-  await db.execute(
-    sql`truncate table ${caseEvents}, ${caseTasks}, ${casePeople}, ${cases}, ${notifications}, ${outboxEvents}, ${auditEvents}, ${deadlines}, ${taskPeople}, ${tasks}, ${inboxItems}, ${people}, ${householdMemberships}, ${households}, ${sessionRevocations}, ${users} cascade`
-  );
-}
 
 beforeEach(resetDatabase);
 afterAll(resetDatabase);

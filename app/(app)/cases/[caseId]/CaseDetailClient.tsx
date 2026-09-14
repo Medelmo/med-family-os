@@ -13,6 +13,7 @@ import { Button } from "../../../../components/ui/Button";
 import { TextField } from "../../../../components/ui/TextField";
 import { Card } from "../../../../components/ui/Card";
 import styles from "./caseDetail.module.css";
+import { useHydrated } from "../../../../components/ui/useHydrated";
 
 const EMPTY: CaseFormState = {};
 
@@ -46,6 +47,7 @@ const ACTIONS_BY_STATUS: Record<CaseStatusName, { action: string; labelKey: stri
 export function CaseActions({ caseId, status, version }: { caseId: string; status: CaseStatusName; version: number }) {
   const t = useTranslations("cases");
   const [state, formAction, isPending] = useActionState(submitCaseTransition, EMPTY);
+  const hydrated = useHydrated();
   const [openForm, setOpenForm] = useState<"wait" | "block" | null>(null);
   const message = useCaseErrorMessage()(state.error);
 
@@ -88,7 +90,7 @@ export function CaseActions({ caseId, status, version }: { caseId: string; statu
                 <input type="hidden" name="caseId" value={caseId} />
                 <input type="hidden" name="expectedVersion" value={version} />
                 <input type="hidden" name="action" value={action} />
-                <Button type="submit" variant={action === "cancel" ? "secondary" : "primary"} disabled={isPending}>
+                <Button type="submit" variant={action === "cancel" ? "secondary" : "primary"} disabled={isPending || !hydrated}>
                   {t(`actions.${labelKey}`)}
                 </Button>
               </form>
@@ -108,7 +110,7 @@ export function CaseActions({ caseId, status, version }: { caseId: string; statu
               silently neither (domain/cases/case.ts). */}
           <TextField label={t("noFollowUpReasonLabel")} name="noFollowUpReason" />
           <TextField label={t("externalReferenceLabel")} name="externalReference" />
-          <Button type="submit" disabled={isPending}>
+          <Button type="submit" disabled={isPending || !hydrated}>
             {t("actions.wait")}
           </Button>
         </form>
@@ -120,7 +122,7 @@ export function CaseActions({ caseId, status, version }: { caseId: string; statu
           <input type="hidden" name="expectedVersion" value={version} />
           <input type="hidden" name="action" value="block" />
           <TextField label={t("blockedReasonLabel")} name="blockedReason" required />
-          <Button type="submit" disabled={isPending}>
+          <Button type="submit" disabled={isPending || !hydrated}>
             {t("actions.block")}
           </Button>
         </form>
@@ -140,6 +142,7 @@ export function NextActionForm({
 }) {
   const t = useTranslations("cases");
   const [state, formAction, isPending] = useActionState(submitCaseNextAction, EMPTY);
+  const hydrated = useHydrated();
   const message = useCaseErrorMessage()(state.error);
 
   return (
@@ -152,7 +155,7 @@ export function NextActionForm({
           {message}
         </p>
       )}
-      <Button type="submit" variant="secondary" disabled={isPending}>
+      <Button type="submit" variant="secondary" disabled={isPending || !hydrated}>
         {t("saveNextAction")}
       </Button>
     </form>
@@ -162,6 +165,7 @@ export function NextActionForm({
 export function AddNoteForm({ caseId }: { caseId: string }) {
   const t = useTranslations("cases");
   const [state, formAction, isPending] = useActionState(submitCaseNote, EMPTY);
+  const hydrated = useHydrated();
   const message = useCaseErrorMessage()(state.error);
 
   return (
@@ -173,7 +177,7 @@ export function AddNoteForm({ caseId }: { caseId: string }) {
           {message}
         </p>
       )}
-      <Button type="submit" variant="secondary" disabled={isPending}>
+      <Button type="submit" variant="secondary" disabled={isPending || !hydrated}>
         {t("addNote")}
       </Button>
     </form>

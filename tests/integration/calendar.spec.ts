@@ -1,32 +1,14 @@
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { db } from "../../infrastructure/db/client";
-import {
-  auditEvents,
-  calendarEventPeople,
-  calendarEvents,
-  caseEvents,
-  casePeople,
-  caseTasks,
-  cases,
-  deadlines,
-  households,
-  householdMemberships,
-  inboxItems,
-  notifications,
-  outboxEvents,
-  people,
-  sessionRevocations,
-  taskPeople,
-  tasks,
-  users,
-} from "../../db/schema";
+import { households } from "../../db/schema";
 import { bootstrapHousehold } from "../../application/commands/household/bootstrapHousehold";
 import { createCalendarEvent } from "../../application/commands/calendar/createCalendarEvent";
 import { getCalendarOccurrences } from "../../application/queries/calendar/getCalendarEvents";
 import { getToday } from "../../application/queries/attention/getAttention";
 import { instantToWallClock } from "../../domain/calendar/timezone";
 import type { Actor } from "../../application/policies/authorize";
+import { resetDatabase } from "../support/database";
 
 /**
  * Calendar events and recurrence end to end (ADR-014). Requires
@@ -34,12 +16,6 @@ import type { Actor } from "../../application/policies/authorize";
  */
 
 const BERLIN = "Europe/Berlin";
-
-async function resetDatabase() {
-  await db.execute(
-    sql`truncate table ${calendarEventPeople}, ${calendarEvents}, ${caseEvents}, ${caseTasks}, ${casePeople}, ${cases}, ${notifications}, ${outboxEvents}, ${auditEvents}, ${deadlines}, ${taskPeople}, ${tasks}, ${inboxItems}, ${people}, ${householdMemberships}, ${households}, ${sessionRevocations}, ${users} cascade`
-  );
-}
 
 beforeEach(resetDatabase);
 afterAll(resetDatabase);

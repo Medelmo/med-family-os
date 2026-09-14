@@ -7,6 +7,7 @@ import { Button } from "../../../components/ui/Button";
 import { TextField } from "../../../components/ui/TextField";
 import { Card } from "../../../components/ui/Card";
 import styles from "./inbox.module.css";
+import { useHydrated } from "../../../components/ui/useHydrated";
 
 const EMPTY: InboxFormState = {};
 
@@ -24,6 +25,7 @@ function useErrorMessage() {
 export function CaptureBox() {
   const t = useTranslations("inbox");
   const [state, formAction, isPending] = useActionState(submitCapture, EMPTY);
+  const hydrated = useHydrated();
   const message = useErrorMessage()(state.error);
 
   return (
@@ -35,7 +37,7 @@ export function CaptureBox() {
             {message}
           </p>
         )}
-        <Button type="submit" disabled={isPending}>
+        <Button type="submit" disabled={isPending || !hydrated}>
           {t("captureButton")}
         </Button>
       </form>
@@ -53,6 +55,7 @@ export function InboxItemRow({ item }: { item: InboxItemView }) {
   const t = useTranslations("inbox");
   const [expanded, setExpanded] = useState(false);
   const [triageState, triageAction, triagePending] = useActionState(submitTriageToTask, EMPTY);
+  const hydrated = useHydrated();
   const [discardState, discardAction, discardPending] = useActionState(submitDiscard, EMPTY);
   const toMessage = useErrorMessage();
   const message = toMessage(triageState.error) ?? toMessage(discardState.error);
@@ -74,7 +77,7 @@ export function InboxItemRow({ item }: { item: InboxItemView }) {
         <form action={discardAction}>
           <input type="hidden" name="inboxItemId" value={item.id} />
           <input type="hidden" name="expectedVersion" value={item.version} />
-          <Button type="submit" variant="secondary" disabled={discardPending}>
+          <Button type="submit" variant="secondary" disabled={discardPending || !hydrated}>
             {t("discard")}
           </Button>
         </form>
@@ -87,7 +90,7 @@ export function InboxItemRow({ item }: { item: InboxItemView }) {
           <TextField label={t("taskTitleLabel")} name="title" defaultValue={item.capturedText} required />
           <TextField label={t("nextActionLabel")} name="nextAction" />
           <TextField label={t("dueOnLabel")} name="dueOn" type="date" />
-          <Button type="submit" disabled={triagePending}>
+          <Button type="submit" disabled={triagePending || !hydrated}>
             {t("createTask")}
           </Button>
         </form>

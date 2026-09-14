@@ -1,19 +1,9 @@
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { db } from "../../infrastructure/db/client";
 import {
-  auditEvents,
-  deadlines,
-  households,
-  householdMemberships,
-  inboxItems,
   notifications,
   outboxEvents,
-  people,
-  sessionRevocations,
-  taskPeople,
-  tasks,
-  users,
 } from "../../db/schema";
 import { bootstrapHousehold } from "../../application/commands/household/bootstrapHousehold";
 import { addHouseholdMember } from "../../application/commands/household/addHouseholdMember";
@@ -25,18 +15,13 @@ import { emitOutboxEvent } from "../../application/outbox/emitOutboxEvent";
 import { getNotifications, getUnreadNotificationCount } from "../../application/queries/notifications/getNotifications";
 import { markNotificationsRead } from "../../application/commands/notifications/markNotificationsRead";
 import type { Actor } from "../../application/policies/authorize";
+import { resetDatabase } from "../support/database";
 
 /**
  * Transactional outbox and in-app notifications (ADR-004 / ADR-013),
  * against a real database. Requires DATABASE_URL to point at a disposable
  * development database.
  */
-
-async function resetDatabase() {
-  await db.execute(
-    sql`truncate table ${notifications}, ${outboxEvents}, ${auditEvents}, ${deadlines}, ${taskPeople}, ${tasks}, ${inboxItems}, ${people}, ${householdMemberships}, ${households}, ${sessionRevocations}, ${users} cascade`
-  );
-}
 
 beforeEach(resetDatabase);
 afterAll(resetDatabase);

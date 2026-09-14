@@ -1198,3 +1198,157 @@ error.
 container scanning (CLAUDE.md §12). Adding a scanner is one more job in
 this file; it is deliberately not bundled into the same change as
 establishing the gate itself.
+
+---
+
+## Phase 5: Finance
+
+Expenses, budget envelopes and the reimbursement lifecycle, plus one
+application-wide defect this phase happened to uncover.
+
+### What the specification did not say
+
+`docs/domain/domain-model.md` gives Expense, Reimbursement and Budget one
+line each; `docs/domain/state-machines.md` gives the reimbursement
+lifecycle six. Everything else had to be decided. **ADR-015** records each
+decision and why, and `docs/domain/state-machines.md` has been amended
+rather than left to disagree with the code. The decisions that would be
+expensive to reverse:
+
+- **Money is integer minor units plus an ISO 4217 code, per row.** Never a
+  float, never `numeric` read back into a JS number, and `bigint` rather
+  than `integer` so a mis-parsed row fails instead of overflowing at about
+  21 million euros.
+- **Amount parsing has one documented rule**, shared by the form and (in
+  future) CSV import, rather than a locale guess. It is knowingly
+  ambiguous for input like `1,234`, which is why the rule is pinned by
+  tests and why import will confirm every parsed row.
+- **Expenses default to `SENSITIVE`** — the only aggregate that does. The
+  policy kernel already refuses a `CHILD` anything above `NORMAL`, so this
+  one default is what keeps household spending away from a child account.
+  Defaulting to `NORMAL` and raising it per call site would fail open, and
+  this project has already been bitten by exactly one such default.
+- **Budgets are recurring monthly envelopes**, not a row per month, so
+  "what was the limit in March?" is answerable without a job having run.
+  Changing a limit ends one envelope and starts another, so a past month
+  keeps the figure it was reported with.
+- **Currencies are never converted.** Spend in a currency no envelope
+  covers is reported as uncovered, out loud, rather than folded in at a
+  rate this app cannot verify.
+
+Two corrections to the documented state machine, both in ADR-015 section 6:
+`WAITING -> REJECTED` was added, because a refusal almost always arrives
+while waiting and the common case otherwise had no legal path; and "any
+open state" was enumerated, excluding `PAID`, because cancelling a claim
+whose money has arrived would record something untrue.
+
+### Attention needed no new rule
+
+`docs/requirements/product-spec.md` lists "unresolved reimbursement" as an
+attention trigger. A claim sitting on a counterparty *is* a wait, so it
+maps onto the normalised candidate shape from Phase 3 and the existing
+`FOLLOW_UP_DUE` / `WAITING_TOO_LONG` / `WAITING_INDEFINITELY` rules apply
+unchanged. That reuse is precisely what the Phase 3 refactor was for, and
+it is the first time it has been tested by a third aggregate. Claims also
+join `scanForReminders` with the same structural-idempotency trick as
+tasks and cases.
+
+### Totals are summed from authorized rows, not in SQL
+
+Budget spend is added up from the expense list the actor is allowed to
+read, not with a `sum()` in the database. That costs a little efficiency
+and buys a property worth more: the totals on the page always add up to
+the rows on the page. Summing in SQL would show a `CHILD` or a
+person-scoped `ADULT` a category total that includes expenses the same
+page refuses to list — a disclosure by arithmetic, because the reader can
+subtract. There is an integration test for this specifically.
+
+### Critical bug found by watching the network, invisible on screen
+
+**Every mutating form in the application was silently inert until
+hydration.**
+
+React renders a `useActionState` form with an `action` attribute that
+throws if the form is submitted natively. A submit **before hydration**
+therefore does nothing at all: no network request, no error, no console
+message, no visual change. The button looks enabled, the click lands, and
+the application ignores it.
+
+This was not visible in any test or on screen. It surfaced because a
+Playwright test failed in a way that made no sense — the same journey
+passed in one test and failed in another whose only difference was that it
+clicked once instead of twice — and the answer only appeared after
+attaching a request listener and finding that *no POST was ever made*.
+
+Two consequences, both real for a user:
+
+1. A fast click on a freshly loaded page is discarded silently. The window
+   is short on a fast connection, long on a slow one, and never closes at
+   all if the JavaScript fails to load.
+2. Worse, text typed into a field before hydration is **discarded when
+   React hydrates it**. The failing test filled a required field, clicked,
+   and got back a page with the field empty and no error at all — the
+   browser's own `required` validation had blocked a submit of data the
+   user had visibly entered.
+
+**Resolution.** `components/ui/useHydrated.ts` — a `useSyncExternalStore`
+whose server snapshot is `false` and client snapshot is `true`, so it is
+correct during hydration itself rather than one paint later. Every submit
+button in the application is now disabled until its form has hydrated: all
+nine components that use `useActionState`, not only the new ones.
+
+This is an improvement, not a cure, and the distinction matters: with
+JavaScript unavailable these forms cannot work either way. What changes is
+that the control now *says* it is not ready instead of pretending to be.
+The honest statement of this app's requirements is that **it needs
+JavaScript for every write**. That was already true; it is now visible
+rather than hidden behind a dead button.
+
+It also gave the E2E suite an honest readiness signal — "the submit button
+is enabled" now means "this form is live" — which replaced what would
+otherwise have been a sleep.
+
+**Files:** `components/ui/useHydrated.ts` (new), and the nine components
+that `grep -l useActionState app components` lists.
+
+### Also in this phase
+
+- `components/ui/SelectField.tsx` and `components/ui/Money.tsx` join the
+  design system. `Money` is the single place minor units become a decimal,
+  at the edge, for display only; it emits `<data value>` so a test asserts
+  on the figure rather than on `Intl`'s localised output.
+- Two forms on the finance page both had a field labelled "Category". The
+  test that tripped over it was right to: two identically named controls
+  on one page are ambiguous for a screen-reader user too. The budget
+  form's is now "Category to budget".
+- `tests/support/database.ts` derives the truncate list from the schema.
+  It had been written out by hand in six places, and each new phase meant
+  remembering all six — a chore whose failure mode is quiet: a forgotten
+  table leaves rows behind, and the test that breaks is an unrelated one
+  in a later file.
+- The desktop and mobile E2E projects share one database and run in
+  sequence, so the finance journeys take a month of their own per project.
+  Two of the three failures on the first full run were assertions that
+  silently depended on which project had run first.
+
+### Verified
+
+`tsc --noEmit`, `eslint .`, 304 unit and integration tests, `next build`,
+and 71 E2E tests (2 skipped by project gate) against the standalone bundle
+the Dockerfile ships — run twice, with identical results.
+
+### Not done in Phase 5
+
+- **CSV import and export**, which `docs/implementation/roadmap.md` lists
+  under this phase. The domain support exists — `parseAmountToMinor` and
+  `formatMinorAsDecimal` were written for it and are tested against the
+  awkward cases — but the confirm-before-writing import flow that ADR-015
+  commits to is a vertical slice of its own, and shipping the parser
+  without it would mean shipping exactly the part that can be silently
+  wrong by a factor of a thousand.
+- **Editing an expense.** It can be recorded and archived; changing one
+  means archiving and re-recording. Archive-over-edit is the documented
+  lifecycle preference (CLAUDE.md section 6), but a typo in an amount
+  deserves a better answer than that.
+- **Linking an expense to a case**, the obvious next connection, which
+  waits on the same document-reference work Phase 3 deferred.

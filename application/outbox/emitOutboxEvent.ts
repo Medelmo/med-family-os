@@ -43,6 +43,22 @@ export type OutboxEvent =
       };
     }
   | {
+      type: "reimbursement.follow_up_due";
+      payload: {
+        reimbursementId: string;
+        reimbursementTitle: string;
+        counterparty: string | null;
+        createdBy: string | null;
+        followUpAt: string;
+        /**
+         * Deliberately no amount. A notification is stored and rendered in
+         * places the claim's own authorization does not reach, and
+         * CLAUDE.md §12 keeps sensitive data out of those paths — the
+         * title and counterparty are enough to act on.
+         */
+      };
+    }
+  | {
       type: "deadline.approaching";
       payload: {
         deadlineId: string;

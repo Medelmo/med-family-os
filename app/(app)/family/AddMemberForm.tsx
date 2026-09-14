@@ -6,12 +6,14 @@ import { submitAddMember, type AddMemberFormState } from "./actions";
 import { TextField } from "../../../components/ui/TextField";
 import { Button } from "../../../components/ui/Button";
 import styles from "./family.module.css";
+import { useHydrated } from "../../../components/ui/useHydrated";
 
 const initialState: AddMemberFormState = {};
 
 export function AddMemberForm() {
   const t = useTranslations("family");
   const [state, formAction, isPending] = useActionState(submitAddMember, initialState);
+  const hydrated = useHydrated();
 
   return (
     <form action={formAction} className={styles.addForm}>
@@ -38,7 +40,7 @@ export function AddMemberForm() {
           {t(state.error === "not_authorized" ? "errorNotAuthorized" : "errorInvalidInput")}
         </p>
       )}
-      <Button type="submit" disabled={isPending}>
+      <Button type="submit" disabled={isPending || !hydrated}>
         {t("addMember")}
       </Button>
     </form>

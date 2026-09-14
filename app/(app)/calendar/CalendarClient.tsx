@@ -7,12 +7,14 @@ import { Button } from "../../../components/ui/Button";
 import { TextField } from "../../../components/ui/TextField";
 import { Card } from "../../../components/ui/Card";
 import styles from "./calendar.module.css";
+import { useHydrated } from "../../../components/ui/useHydrated";
 
 const EMPTY: CalendarFormState = {};
 
 export function AddEventForm() {
   const t = useTranslations("calendar");
   const [state, formAction, isPending] = useActionState(submitCreateEvent, EMPTY);
+  const hydrated = useHydrated();
 
   return (
     <Card>
@@ -37,7 +39,7 @@ export function AddEventForm() {
             {t(state.error === "not_authorized" ? "errorNotAuthorized" : "errorInvalidInput")}
           </p>
         )}
-        <Button type="submit" disabled={isPending}>
+        <Button type="submit" disabled={isPending || !hydrated}>
           {t("addEvent")}
         </Button>
       </form>

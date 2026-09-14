@@ -90,7 +90,7 @@ export interface BlockedContext {
 
 export interface AttentionCandidate {
   id: string;
-  kind: "task" | "case";
+  kind: "task" | "case" | "reimbursement";
   title: string;
   priority: Priority;
   /** Date-only, as "YYYY-MM-DD" — see toIsoDate. */

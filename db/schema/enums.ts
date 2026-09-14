@@ -31,6 +31,38 @@ export const outboxStatusEnum = pgEnum("outbox_status", ["PENDING", "PROCESSED",
 // Mirrors domain/cases/case.ts. Note this is a different shape from
 // task_status on purpose: a case can be BLOCKED and ARCHIVED, a task
 // cannot, and a task can be reopened, a case cannot (ADR-007).
+// Mirrors domain/finance/reimbursement.ts. WAITING -> REJECTED is a
+// deliberate addition to docs/domain/state-machines.md rather than a
+// divergence from it; see ADR-015 and the comment on ALLOWED_TRANSITIONS.
+export const reimbursementStatusEnum = pgEnum("reimbursement_status", [
+  "PLANNED",
+  "SUBMITTED",
+  "WAITING",
+  "APPROVED",
+  "PARTIALLY_REIMBURSED",
+  "PAID",
+  "REJECTED",
+  "COMPLETED",
+  "CANCELLED",
+]);
+
+// Mirrors EXPENSE_CATEGORIES in domain/finance/expense.ts.
+export const expenseCategoryEnum = pgEnum("expense_category", [
+  "HOUSING",
+  "UTILITIES",
+  "GROCERIES",
+  "HEALTH",
+  "INSURANCE",
+  "TRANSPORT",
+  "CHILDCARE",
+  "EDUCATION",
+  "LEISURE",
+  "TRAVEL",
+  "HOUSEHOLD",
+  "FEES",
+  "OTHER",
+]);
+
 export const caseStatusEnum = pgEnum("case_status", [
   "DRAFT",
   "ACTIVE",

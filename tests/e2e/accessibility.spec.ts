@@ -64,18 +64,18 @@ test.describe("signed in", () => {
     await expectNoViolations(page);
   });
 
-  // docs/design/implementation-handoff.md: "Never horizontally scroll
-  // primary content." This caught a real regression: the nav was a
-  // non-wrapping flex row, so each new destination pushed the page wider
-  // until, at eight, a phone viewport overflowed and taps began landing on
-  // the wrong element.
   test("more page has no automatically detectable WCAG violations", async ({ page }) => {
     await page.goto("/more");
     await expect(page.getByRole("heading", { name: "More" })).toBeVisible();
     await expectNoViolations(page);
   });
 
-  for (const path of ["/today", "/calendar", "/cases", "/inbox", "/notifications", "/more"]) {
+  // docs/design/implementation-handoff.md: "Never horizontally scroll
+  // primary content." This caught a real regression: the nav was a
+  // non-wrapping flex row, so each new destination pushed the page wider
+  // until, at eight, a phone viewport overflowed and taps began landing on
+  // the wrong element.
+  for (const path of ["/today", "/calendar", "/cases", "/inbox", "/notifications", "/more", "/finance"]) {
     test(`${path} does not scroll horizontally`, async ({ page }) => {
       await page.goto(path);
       const overflow = await page.evaluate(() => ({
@@ -144,6 +144,7 @@ test.describe("signed in", () => {
       "/tasks",
       "/cases",
       "/calendar",
+      "/finance",
       "/family",
     ]);
     // Colour alone must not communicate where you are (CLAUDE.md §13).

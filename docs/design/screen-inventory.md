@@ -41,11 +41,20 @@
 30. Notes
 
 ## Finance
-31. Finance overview
-32. Expenses
-33. Expense detail
-34. Reimbursements
-35. Budgets
+31. Finance overview — `/finance?month=YYYY-MM`. Built. Carries 32 and 35
+    rather than splitting them: a month's spend, its envelopes and the
+    form that adds to both are one question ("how are we doing this
+    month?"), and separating them would mean three navigations to answer
+    it.
+32. Expenses — part of 31.
+33. Expense detail — **not built.** An expense is currently record-and-
+    archive; there is nothing on one worth a page of its own until it can
+    be edited or linked to a case.
+34. Reimbursements — `/finance/claims` and `/finance/claims/[claimId]`.
+    Built. The detail page offers exactly the transitions the state
+    machine allows from the claim's current status, so it never presents a
+    dead end, and shows the claim's own history.
+35. Budgets — part of 31.
 
 ## Travel
 36. Trips
