@@ -562,7 +562,24 @@
       "PARTIAL": "Partly done",
       "FAILED": "Failed",
       "RETRYING": "Retrying"
-    }
+    },
+    "scheduleTitle": "Sync by itself",
+    "scheduleExplainer": "When this is set, the app contacts the system on its own, without anybody asking. A failed sync is retried a few times with a growing gap, then left alone with its error.",
+    "scheduleLabel": "How often?",
+    "scheduleHint": "Fifteen minutes is the shortest, so the household is not hammering its own server.",
+    "scheduleSave": "Save the schedule",
+    "scheduleManual": "Only when asked",
+    "scheduleHourly": "Every hour",
+    "scheduleDaily": "Every day",
+    "scheduleEvery": "Every {minutes} minutes",
+    "scheduleEveryHours": "Every {hours} hours",
+    "errorAlreadyRunning": "This integration is already syncing. Wait for it to finish.",
+    "errorIntervalInvalid": "Choose one of the offered intervals.",
+    "scheduleManualSummary": "Syncs only when asked",
+    "scheduleSummaryMinutes": "Syncs by itself every {minutes} minutes",
+    "scheduleSummaryHours": "Syncs by itself every {hours} hours",
+    "scheduleSummaryHourly": "Syncs by itself every hour",
+    "scheduleSummaryDaily": "Syncs by itself once a day"
   },
   "documents": {
     "title": "Documents",

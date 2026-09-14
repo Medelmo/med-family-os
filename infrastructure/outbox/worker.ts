@@ -1,5 +1,6 @@
 import { processOutbox } from "../../application/outbox/processOutbox";
 import { scanForReminders } from "../../application/reminders/scanForReminders";
+import { scanForSyncs } from "../../application/commands/integrations/scanForSyncs";
 import { logger } from "../logging/logger";
 
 const POLL_INTERVAL_MS = Number(process.env.OUTBOX_POLL_INTERVAL_MS ?? 10_000);
@@ -9,6 +10,13 @@ const POLL_INTERVAL_MS = Number(process.env.OUTBOX_POLL_INTERVAL_MS ?? 10_000);
 // minute is indistinguishable from one noticed instantly, while a query
 // across every waiting task and case every ten seconds is pure waste.
 const REMINDER_SCAN_INTERVAL_MS = Number(process.env.REMINDER_SCAN_INTERVAL_MS ?? 60_000);
+
+// Slower again, and for a stronger reason than waste: this is the one
+// loop that makes requests to somebody else's server (ADR-023). The
+// shortest interval a household may configure is fifteen minutes, so
+// checking every five is already three times more often than the most
+// eager connection can possibly be due.
+const SYNC_SCAN_INTERVAL_MS = Number(process.env.SYNC_SCAN_INTERVAL_MS ?? 300_000);
 
 declare global {
   var __medFamilyOsOutboxWorkerStarted: boolean | undefined;
@@ -57,12 +65,37 @@ export function startOutboxWorker(): void {
     }
   };
 
+  const syncScan = async () => {
+    try {
+      const result = await scanForSyncs();
+      const touched = result.reaped + result.scheduled + result.retried;
+      if (touched > 0) {
+        logger.info({ event: "sync.scanned", ...result }, "sync scheduler acted");
+      }
+    } catch (error) {
+      // Same reasoning as the other two: one bad connection must not stop
+      // every future pass. Per-connection failures are already caught
+      // inside scanForSyncs; this catches the query itself.
+      logger.error({ event: "sync.scan_error", err: error }, "sync scan threw");
+    }
+  };
+
   const outboxTimer = setInterval(tick, POLL_INTERVAL_MS);
   const reminderTimer = setInterval(scan, REMINDER_SCAN_INTERVAL_MS);
+  const syncTimer = setInterval(syncScan, SYNC_SCAN_INTERVAL_MS);
   // Don't hold the process open purely for the poll timers.
   outboxTimer.unref?.();
   reminderTimer.unref?.();
+  syncTimer.unref?.();
 
   void tick();
   void scan();
+  // Deliberately *not* run immediately, unlike the other two. A restart
+  // must not become a reason to call somebody else's server: a container
+  // that crash-loops would otherwise sync on every boot, and the work is
+  // due within five minutes anyway.
+  //
+  // The reap is delayed by the same five minutes, which is correct — a
+  // run abandoned by the process that just died is not stale until
+  // STALE_RUN_MS has passed regardless.
 }

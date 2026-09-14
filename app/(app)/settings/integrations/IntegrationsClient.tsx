@@ -6,6 +6,7 @@ import {
   submitConnect,
   submitReplaceToken,
   submitRunSync,
+  submitSetSchedule,
   submitToggleIntegration,
   type IntegrationFormState,
 } from "./actions";
@@ -26,6 +27,8 @@ const ERROR_KEYS = {
   disabled: "errorDisabled",
   no_adapter: "errorNoAdapter",
   no_credential: "errorNoCredential",
+  already_running: "errorAlreadyRunning",
+  interval_invalid: "errorIntervalInvalid",
 } as const;
 
 function ErrorLine({ error }: { error?: string }) {
@@ -143,6 +146,54 @@ export function ToggleIntegrationForm({
         {enabled ? t("disable") : t("enable")}
       </Button>
       <ErrorLine error={state.error} />
+    </form>
+  );
+}
+
+/**
+ * How often this connection syncs by itself.
+ *
+ * A select of fixed choices rather than a free number field. The floor
+ * exists to protect somebody else's server (`MIN_SYNC_INTERVAL_MINUTES`),
+ * and a field that invites "5" and then refuses it teaches the household
+ * nothing except that the app is fussy. The domain and the database still
+ * enforce the floor — this is the UI not asking the question badly, not
+ * the UI doing the enforcing.
+ */
+export function ScheduleForm({
+  connectionId,
+  version,
+  intervalMinutes,
+}: {
+  connectionId: string;
+  version: number;
+  intervalMinutes: number | null;
+}) {
+  const t = useTranslations("integrations");
+  const [state, formAction, isPending] = useActionState(submitSetSchedule, EMPTY);
+  const hydrated = useHydrated();
+
+  return (
+    <form action={formAction} className={styles.form}>
+      <input type="hidden" name="connectionId" value={connectionId} />
+      <input type="hidden" name="expectedVersion" value={version} />
+      <SelectField
+        label={t("scheduleLabel")}
+        name="intervalMinutes"
+        defaultValue={intervalMinutes === null ? "" : String(intervalMinutes)}
+        options={[
+          { value: "", label: t("scheduleManual") },
+          { value: "15", label: t("scheduleEvery", { minutes: 15 }) },
+          { value: "60", label: t("scheduleHourly") },
+          { value: "360", label: t("scheduleEveryHours", { hours: 6 }) },
+          { value: "1440", label: t("scheduleDaily") },
+        ]}
+        hint={t("scheduleHint")}
+      />
+      <ErrorLine error={state.error} />
+      <Button type="submit" disabled={isPending || !hydrated} variant="secondary">
+        {t("scheduleSave")}
+      </Button>
     </form>
   );
 }

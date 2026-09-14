@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../../../infrastructure/db/client";
 import { documentReferences, integrationConnections, syncRuns } from "../../../db/schema";
 import { applySyncCommand, nextCursorAfter, type SyncCommand, type SyncRun } from "../../../domain/integrations/syncRun";
+import type { SyncTrigger } from "../../../domain/integrations/syncSchedule";
 import { applyProviderUpdate, isSafeDocumentUrl } from "../../../domain/documents/documentReference";
 import { createPaperlessProvider, withTimeout, PAPERLESS_TIMEOUT_MS } from "../../../infrastructure/integrations/paperless";
 import { ProviderError, type DocumentProvider } from "../../integrations/documentProvider";
@@ -31,6 +32,49 @@ export interface SyncOutcome {
   itemsSkipped: number;
 }
 
+export interface SyncOptions {
+  providerFactory?: (baseUrl: string, token: string) => DocumentProvider;
+  now?: Date;
+}
+
+/**
+ * Who, or what, caused this run — recorded on every audit event.
+ *
+ * A scheduled or retried run has no user behind it, and inventing one
+ * would put a false name in the audit trail. `actorUserId: null` plus an
+ * explicit trigger says what actually happened: nobody asked, the
+ * schedule did.
+ */
+interface RunAttribution {
+  actorUserId: string | null;
+  trigger: SyncTrigger;
+}
+
+/**
+ * Postgres unique-violation (SQLSTATE 23505). Raised here by the partial
+ * unique index that allows one live run per connection, which is how a run
+ * claims its connection (ADR-023).
+ *
+ * **The chain has to be walked.** Drizzle wraps driver errors in a
+ * `DrizzleQueryError` whose own `code` is undefined and whose `cause` is
+ * the `PostgresError` that carries it. Checking only the top level looked
+ * right, passed nothing, and would have shipped a raw constraint violation
+ * to the user as a 500 the first time two syncs overlapped — which the
+ * integration test caught on its first run.
+ *
+ * Bounded rather than recursive without a limit: a cyclic `cause` is
+ * unlikely but a hung loop in an error handler is a miserable way to find
+ * out.
+ */
+function isUniqueViolation(error: unknown): boolean {
+  for (let current = error, depth = 0; current && depth < 5; depth += 1) {
+    if (typeof current !== "object") return false;
+    if ((current as { code?: string }).code === "23505") return true;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return false;
+}
+
 /**
  * Runs one synchronisation.
  *
@@ -50,14 +94,133 @@ export async function runSync(
   actor: Actor,
   householdId: string,
   connectionId: string,
-  options: { providerFactory?: (baseUrl: string, token: string) => DocumentProvider; now?: Date } = {}
+  options: SyncOptions = {}
 ): Promise<SyncOutcome> {
   if (!authorizeIntegrationAccess(actor, householdId)) {
     throw new AuthorizationError("Only an owner or admin may run a sync.");
   }
 
   const now = options.now ?? new Date();
+  const connection = await loadSyncableConnection(householdId, connectionId);
 
+  let run: typeof syncRuns.$inferSelect;
+  try {
+    [run] = await db
+      .insert(syncRuns)
+      .values({ householdId, connectionId, cursorBefore: connection.cursor })
+      .returning();
+  } catch (error) {
+    // The one-live-run-per-connection index. Somebody — or the scheduler —
+    // is already syncing this connection, and two runs sharing one cursor
+    // would double the work and confuse the counts.
+    if (isUniqueViolation(error)) {
+      throw new IntegrationRuleError("ALREADY_RUNNING", "This integration is already syncing. Wait for it to finish.");
+    }
+    throw error;
+  }
+
+  return executeRun(run as unknown as SyncRun, connection, { actorUserId: actor.userId, trigger: "MANUAL" }, now, options);
+}
+
+/**
+ * Starts a run that nobody asked for.
+ *
+ * Identical to `runSync` except that there is no `Actor` and therefore no
+ * authorization check — which is deliberate, not an oversight. There is no
+ * user here whose permissions could be checked, and inventing a
+ * "system user" would put a name in the audit trail that belongs to
+ * nobody. What stands in for authorization is that this is unreachable
+ * from any route or Server Action: its only caller is the scheduler, which
+ * selects connections by the household's own stored interval. A household
+ * authorizes unattended syncing once, by setting that interval, and the
+ * command that sets it *does* check permissions.
+ */
+export async function runScheduledSync(
+  householdId: string,
+  connectionId: string,
+  options: SyncOptions = {}
+): Promise<SyncOutcome> {
+  const now = options.now ?? new Date();
+  const connection = await loadSyncableConnection(householdId, connectionId);
+
+  let run: typeof syncRuns.$inferSelect;
+  try {
+    [run] = await db
+      .insert(syncRuns)
+      .values({ householdId, connectionId, cursorBefore: connection.cursor })
+      .returning();
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      throw new IntegrationRuleError("ALREADY_RUNNING", "This integration is already syncing.");
+    }
+    throw error;
+  }
+
+  return executeRun(run as unknown as SyncRun, connection, { actorUserId: null, trigger: "SCHEDULE" }, now, options);
+}
+
+/**
+ * Picks a `FAILED` run back up.
+ *
+ * Not a new run: the same row, with `attempt` incremented, so "this
+ * connection has failed four times in a row" stays a single readable
+ * history instead of four unrelated rows that somebody has to correlate.
+ * That is what `FAILED -> RETRYING -> RUNNING` in
+ * `docs/domain/state-machines.md` has always described.
+ *
+ * There is no `Actor` parameter and no authorization check, and that is
+ * deliberate rather than an omission: this is only reachable from the
+ * scheduler, which is not acting for anybody. It is not exported to any
+ * UI or route, and it takes a run id it has already selected under the
+ * scheduler's own rules — it cannot be pointed at an arbitrary row by a
+ * request. If a "retry now" button is ever added, it must go through a
+ * command that authorizes, exactly as `runSync` does.
+ */
+export async function retrySyncRun(
+  householdId: string,
+  runId: string,
+  options: SyncOptions = {}
+): Promise<SyncOutcome> {
+  const now = options.now ?? new Date();
+
+  const [row] = await db
+    .select()
+    .from(syncRuns)
+    .where(and(eq(syncRuns.id, runId), eq(syncRuns.householdId, householdId)))
+    .limit(1);
+
+  if (!row) throw new NotFoundError("Sync run not found.");
+
+  const connection = await loadSyncableConnection(householdId, row.connectionId);
+
+  let retrying: SyncRun;
+  try {
+    retrying = await transition(row as unknown as SyncRun, { type: "RETRY" }, now, householdId, {
+      actorUserId: null,
+      trigger: "RETRY",
+    });
+  } catch (error) {
+    // Another scheduler tick got there first, or somebody pressed "Sync
+    // now" in the meantime: the live-run index refused to let this row
+    // become live. Nothing to report — the connection is being synced.
+    if (isUniqueViolation(error)) {
+      throw new IntegrationRuleError("ALREADY_RUNNING", "This integration is already syncing. Wait for it to finish.");
+    }
+    throw error;
+  }
+
+  return executeRun(retrying, connection, { actorUserId: null, trigger: "RETRY" }, now, options);
+}
+
+/**
+ * Loads a connection and refuses the ones that cannot sync.
+ *
+ * Shared by the manual and the scheduled path so "is this thing syncable"
+ * has one answer. The scheduler's query filters on the same facts, but it
+ * re-checks here because between the query and the run somebody may have
+ * switched the connection off.
+ */
+async function loadSyncableConnection(householdId: string, connectionId: string) {
   const [connection] = await db
     .select()
     .from(integrationConnections)
@@ -75,14 +238,35 @@ export async function runSync(
     throw new IntegrationRuleError("NO_ADAPTER", "There is no adapter for this provider yet.");
   }
 
-  const [run] = await db
-    .insert(syncRuns)
-    .values({ householdId, connectionId, cursorBefore: connection.cursor })
-    .returning();
+  return connection;
+}
 
-  let state = run as unknown as SyncRun;
-  state = await transition(state, { type: "START" }, now, householdId, actor);
+/**
+ * Drives one run from `RUNNING` to whatever it ends as.
+ *
+ * Separated from `runSync` because a retry does not create a run — it
+ * revives the one that failed, keeping its history and its attempt count
+ * — and both paths must then do exactly the same thing. Two copies of
+ * this loop would be two chances for the retry path to handle `PARTIAL`
+ * or the cursor differently from the first attempt.
+ */
+async function executeRun(
+  initial: SyncRun,
+  connection: typeof integrationConnections.$inferSelect,
+  attribution: RunAttribution,
+  now: Date,
+  options: SyncOptions
+): Promise<SyncOutcome> {
+  const householdId = connection.householdId;
+  const connectionId = connection.id;
 
+  let state = await transition(initial, { type: "START" }, now, householdId, attribution);
+
+  // The connection's own cursor, not the run's `cursorBefore`. For a retry
+  // they are usually the same — a FAILED run imported nothing — but a run
+  // can fail after a page that was entirely skips, which advances the
+  // cursor without importing. Resuming from the live cursor re-reads
+  // nothing that was already dealt with.
   let cursor = connection.cursor;
   let seen = 0;
   let imported = 0;
@@ -113,7 +297,7 @@ export async function runSync(
       { type: "SUCCEED", progress: { itemsSeen: seen, itemsImported: imported, itemsSkipped: skipped, cursorAfter: cursor } },
       now,
       householdId,
-      actor
+      attribution
     );
 
     await db
@@ -137,7 +321,7 @@ export async function runSync(
           }
         : { type: "FAIL", errorKind: kind, errorMessage: message };
 
-    state = await transition(state, command, now, householdId, actor);
+    state = await transition(state, command, now, householdId, attribution);
 
     await db
       .update(integrationConnections)
@@ -195,7 +379,7 @@ async function transition(
   command: SyncCommand,
   now: Date,
   householdId: string,
-  actor: Actor
+  attribution: RunAttribution
 ): Promise<SyncRun> {
   const result = applySyncCommand(run, command, now);
   if (!result.ok) {
@@ -213,10 +397,14 @@ async function transition(
 
   await recordAuditEvent({
     householdId,
-    actorUserId: actor.userId,
+    actorUserId: attribution.actorUserId,
     action: result.transition.auditAction,
     resourceType: "sync_run",
     resourceId: run.id,
+    // Without this, a scheduled run and a manual one are indistinguishable
+    // in the audit trail apart from a null actor — and "nobody" is not the
+    // same answer as "the schedule".
+    metadata: { trigger: attribution.trigger },
   });
 
   return updated as unknown as SyncRun;

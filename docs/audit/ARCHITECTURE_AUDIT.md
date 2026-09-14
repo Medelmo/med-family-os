@@ -2154,3 +2154,121 @@ horizontal-overflow guard on `/search`.
 - **Searching notes, timeline entries and trip items.** Adding an
   aggregate to search is a migration plus one more `matchIds` call, so
   this is cheap when somebody misses it.
+
+## The retry policy that nothing enacted
+
+`docs/domain/state-machines.md` has contained `FAILED -> RETRYING ->
+RUNNING` since Phase 0. ADR-020 implemented that machine and tested every
+transition in it. `CLAUDE.md` §9 requires every adapter to define a retry
+policy.
+
+All of that was true and none of it did anything. The only thing that
+could move a run through the machine was a person pressing "Sync now".
+`RETRYING` was a state no code outside a unit test had ever written. An
+integration that failed at 2am stayed failed until somebody noticed.
+
+This is worth naming as a category rather than a bug: **an implemented,
+tested state machine with nothing driving it looks exactly like a working
+feature** — green tests, a documented policy, a state column that has all
+the right values in it. Nothing in the suite was wrong. The question
+nobody had asked was "what calls this?". **ADR-023** records the answer.
+
+### Scheduling, and the decision not to have an actor
+
+One new nullable column, `sync_interval_minutes`, defaulting to NULL —
+manual only. A migration must not quietly start making outbound requests
+to somebody else's server for a household that never asked. The floor is
+15 minutes, enforced in the command, in a `CHECK`, and in the UI, which
+offers fixed choices rather than a number field that would invite "5" and
+then refuse it.
+
+The scheduler takes no `Actor` and checks no permissions, which needs
+defending rather than glossing:
+
+- There is no user here. Inventing a "system user" would put a name in the
+  audit trail belonging to nobody, and a fabricated actor is worse than an
+  absent one.
+- `runScheduledSync` and `retrySyncRun` are unreachable from any route or
+  Server Action. Their only caller selects connections by the household's
+  own stored interval; neither can be aimed at a connection by a request.
+- The household authorizes this **once**, by setting the interval — and
+  that command does check permissions, owner or admin, and audits who gave
+  the instruction.
+- Every scheduled run is audited with `actorUserId: null` and
+  `metadata.trigger` of `SCHEDULE` or `RETRY`. "Nobody" and "the schedule"
+  are different answers and the trail now carries both.
+
+### A run claims its connection by existing
+
+```sql
+CREATE UNIQUE INDEX sync_run_one_live_per_connection_uq
+  ON sync_run (connection_id)
+  WHERE status IN ('PENDING', 'RUNNING', 'RETRYING');
+```
+
+Not a row lock: a sync makes network calls across up to ten pages, and
+holding a transaction open for that is what the rest of this codebase
+exists to avoid. So the claim is the row. A second scheduler tick, a
+rolling restart running two containers, or a person pressing "Sync now"
+during a scheduled run all collide here and lose, rather than racing over
+one cursor. Postgres checks unique indexes on UPDATE too, so the retry
+path — where a `FAILED` row *becomes* live — is covered by the same
+constraint.
+
+An unreleased claim would wedge the connection forever, so a live run
+older than twenty minutes is reaped to `FAILED` with
+`error_kind = 'abandoned'` — distinguishable from "the provider refused
+us", and retryable, because the work still needs doing.
+
+### A defect the first integration test caught
+
+Translating the constraint violation into a friendly rejection needs the
+error's `cause` chain walked: Drizzle wraps driver errors, and the
+`PostgresError` carrying SQLSTATE 23505 sits one level down. My first
+version checked only the top-level `code`. It compiled, read correctly,
+and produced this on its first run:
+
+```
+expected DrizzleQueryError { … "cause": PostgresError { "code": "23505" } }
+      to match { name: "IntegrationRuleError", code: "ALREADY_RUNNING" }
+```
+
+Without the test it would have shipped as a raw constraint violation — a
+500 — the first time two syncs overlapped, which is precisely the
+situation the index was added to handle gracefully.
+
+### Two text problems found by looking, not by testing
+
+Both in the schedule UI, both invisible to a green suite:
+
+- **"Only when asked"** read fine as a dropdown option and as a fragment
+  under a URL in the card summary. It was also, literally, the same string
+  in both places — which a Playwright locator resolved to two elements and
+  refused. That ambiguity was the signal: the summary now says "Syncs only
+  when asked", a sentence, parallel to the set state.
+- **"Syncs by itself every 1440 minutes"** is what the column says and
+  nobody's idea of a daily sync. The unit now follows the number: hourly,
+  every N hours, once a day.
+
+### Verified
+
+`tsc --noEmit`, `eslint .`, 649 unit and integration tests (39 new: 22
+pure scheduling rules, 17 against a real database covering backoff, the
+attempt ceiling, reaping, and three ways two syncs could have raced),
+`next build`, and 191 E2E tests against the standalone bundle (2 skipped
+by project gate), with the integrations journey extended to 21. The phone
+layout of the new schedule control was looked at, not assumed.
+
+### Not done
+
+- **Nextcloud and CalDAV adapters.** The driver is provider-agnostic and
+  the scheduler is entirely so; what is missing is two `DocumentProvider`
+  implementations. A connection to either is refused with "there is no
+  adapter for that system yet" rather than failing confusingly.
+- **A "retry this now" button.** The scheduler will get to it, and a
+  manual "Sync now" already starts a fresh run. If one is added it must go
+  through an authorizing command, which ADR-023 says explicitly.
+- **Alerting on a connection that has exhausted its attempts.** It is
+  visible on the integrations page and in the log, which is the same
+  standard the outbox's terminal `FAILED` holds itself to. A notification
+  would be the better answer and is cheap now that the state exists.

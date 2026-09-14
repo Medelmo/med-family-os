@@ -31,6 +31,15 @@ async function connect(page: Page, name: string) {
 
 const card = (page: Page, name: string) => page.getByRole("listitem").filter({ hasText: name });
 
+/**
+ * A line of the connection's own summary.
+ *
+ * Still scoped to a paragraph even though the summary and the select no
+ * longer share wording: the card contains a form, and "a line of the
+ * summary" is what these assertions mean.
+ */
+const summary = (page: Page, name: string, text: string) => card(page, name).locator("p", { hasText: text });
+
 test("connects a system and never shows the token again", async ({ page }) => {
   const name = `Paperless ${Date.now()}`;
   await connect(page, name);
@@ -104,4 +113,60 @@ test("the settings index leads to integrations", async ({ page }) => {
 
   await page.getByRole("link", { name: "Integrations" }).click();
   await expect(page.getByRole("heading", { name: "Integrations", level: 1 })).toBeVisible();
+});
+
+test("a household turns unattended syncing on, and can see that it is on", async ({ page }) => {
+  const name = `Scheduled ${Date.now()}`;
+  await connect(page, name);
+
+  // Off until asked for. A connection must not start contacting somebody
+  // else's server because it exists.
+  //
+  // Scoped to the summary paragraph: the select's own "Only when asked"
+  // option carries the same words, and a bare text match finds both.
+  await expect(summary(page, name, "Syncs only when asked")).toBeVisible();
+
+  await card(page, name).getByRole("group").filter({ hasText: "Sync by itself" }).click();
+  await card(page, name).getByLabel("How often?").selectOption("60");
+  await card(page, name).getByRole("button", { name: "Save the schedule", exact: true }).click();
+
+  // Visible in the summary without opening anything: whether this is
+  // talking to another machine on its own is not a detail to bury.
+  await expect(card(page, name).getByText("Syncs by itself every hour")).toBeVisible();
+
+  await page.reload();
+  await expect(card(page, name).getByText("Syncs by itself every hour")).toBeVisible();
+});
+
+test("and turns it off again", async ({ page }) => {
+  const name = `Unscheduled ${Date.now()}`;
+  await connect(page, name);
+
+  const schedule = card(page, name).getByRole("group").filter({ hasText: "Sync by itself" });
+  await schedule.click();
+
+  await card(page, name).getByLabel("How often?").selectOption("1440");
+  await card(page, name).getByRole("button", { name: "Save the schedule", exact: true }).click();
+  await expect(card(page, name).getByText("Syncs by itself once a day")).toBeVisible();
+
+  await card(page, name).getByLabel("How often?").selectOption("");
+  await card(page, name).getByRole("button", { name: "Save the schedule", exact: true }).click();
+  await expect(summary(page, name, "Syncs only when asked")).toBeVisible();
+});
+
+// The floor exists to protect the household's own server, so the UI does
+// not offer a way to ask for less. A free number field would invite "5"
+// and then refuse it.
+test("does not offer an interval below the floor", async ({ page }) => {
+  const name = `Floor ${Date.now()}`;
+  await connect(page, name);
+
+  await card(page, name).getByRole("group").filter({ hasText: "Sync by itself" }).click();
+
+  const values = await card(page, name)
+    .getByLabel("How often?")
+    .evaluate((el) => [...(el as HTMLSelectElement).options].map((o) => o.value));
+
+  expect(values).toEqual(["", "15", "60", "360", "1440"]);
+  expect(values.filter((v) => v !== "").every((v) => Number(v) >= 15)).toBe(true);
 });

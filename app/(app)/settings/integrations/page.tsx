@@ -4,8 +4,28 @@ import { getIntegrations } from "../../../../application/queries/integrations/ge
 import { authorizeIntegrationAccess } from "../../../../application/policies/integrations";
 import { isKeyringConfigured } from "../../../../infrastructure/crypto/keyring";
 import { Card } from "../../../../components/ui/Card";
-import { ConnectForm, ReplaceTokenForm, SyncNowForm, ToggleIntegrationForm } from "./IntegrationsClient";
+import { ConnectForm, ReplaceTokenForm, ScheduleForm, SyncNowForm, ToggleIntegrationForm } from "./IntegrationsClient";
 import styles from "./integrations.module.css";
+
+/**
+ * The schedule, in words a person would use.
+ *
+ * "Every 1440 minutes" is technically what is stored and is nobody's idea
+ * of a daily sync. The unit follows the number rather than the column.
+ *
+ * The off state is a whole sentence — "Syncs only when asked" — not the
+ * select's "Only when asked": the same words that read correctly as a
+ * choice read as a fragment when they are standing alone under a URL.
+ * They were literally indistinguishable to a test locator, which is a
+ * decent sign they should not have been the same string.
+ */
+function scheduleSummary(t: Awaited<ReturnType<typeof getTranslations>>, minutes: number | null): string {
+  if (minutes === null) return t("scheduleManualSummary");
+  if (minutes === 60) return t("scheduleSummaryHourly");
+  if (minutes === 1440) return t("scheduleSummaryDaily");
+  if (minutes % 60 === 0) return t("scheduleSummaryHours", { hours: minutes / 60 });
+  return t("scheduleSummaryMinutes", { minutes });
+}
 
 export default async function IntegrationsPage() {
   const { actor, householdId } = await requireActor();
@@ -55,6 +75,12 @@ export default async function IntegrationsPage() {
                   {integration.provider} · {integration.baseUrl}
                 </p>
 
+                {/* Said in the summary as well as offered in the form
+                    below: whether this connection is talking to somebody
+                    else's server unattended is something a household
+                    should be able to see without opening anything. */}
+                <p className={styles.meta}>{scheduleSummary(t, integration.syncIntervalMinutes)}</p>
+
                 {/* Sync health (screen 46): the last few runs, said in
                     words. "Is this working?" is answered from persisted
                     runs, not from whoever happened to be watching. */}
@@ -90,6 +116,16 @@ export default async function IntegrationsPage() {
                     enabled={integration.enabled}
                   />
                 </div>
+
+                <details className={styles.details}>
+                  <summary>{t("scheduleTitle")}</summary>
+                  <p className={styles.meta}>{t("scheduleExplainer")}</p>
+                  <ScheduleForm
+                    connectionId={integration.id}
+                    version={integration.version}
+                    intervalMinutes={integration.syncIntervalMinutes}
+                  />
+                </details>
 
                 <details className={styles.details}>
                   <summary>{t("replaceToken")}</summary>

@@ -35,6 +35,14 @@ export const integrationConnections = pgTable(
     baseUrl: text("base_url").notNull(),
     enabled: boolean("enabled").notNull().default(true),
 
+    /**
+     * How often to sync without anybody asking. NULL means manual only,
+     * and is the default — a migration must not quietly start making
+     * outbound requests on behalf of connections whose owners never asked
+     * for them (ADR-023).
+     */
+    syncIntervalMinutes: integer("sync_interval_minutes"),
+
     /** Where the last successful or partial run reached. */
     cursor: text("cursor"),
     lastSyncAt: timestamp("last_sync_at", { mode: "date", withTimezone: true }),
@@ -51,6 +59,14 @@ export const integrationConnections = pgTable(
     // as a fetch target; the domain refuses one too, and this makes it
     // impossible for any other path to write one.
     check("integration_connection_base_url_scheme", sql`${table.baseUrl} ~* '^https?://'`),
+    // The floor from MIN_SYNC_INTERVAL_MINUTES, enforced here as well as in
+    // the command: a household that sets "every minute" has not thought
+    // about the machine at the other end, and this is not a rule any
+    // future import or hand-run UPDATE should be able to step around.
+    check(
+      "integration_connection_sync_interval_floor",
+      sql`${table.syncIntervalMinutes} is null or ${table.syncIntervalMinutes} >= 15`
+    ),
   ]
 );
 
@@ -115,7 +131,31 @@ export const syncRuns = pgTable(
     errorMessage: text("error_message"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index("sync_run_connection_created_idx").on(table.connectionId, table.createdAt)]
+  (table) => [
+    index("sync_run_connection_created_idx").on(table.connectionId, table.createdAt),
+    /**
+     * **At most one live run per connection**, as a database property.
+     *
+     * This is how a scheduled run claims its connection: it does not take
+     * a lock — a sync makes network calls for up to ten pages and holding
+     * a transaction open across that is exactly what the rest of this
+     * codebase refuses to do — it simply tries to create the row. A second
+     * scheduler tick, a rolling restart running two app containers, or a
+     * person pressing "Sync now" while a scheduled run is in flight all
+     * collide here and lose, rather than producing two syncs racing over
+     * one cursor.
+     *
+     * Postgres checks a unique index on UPDATE too, so this also guards
+     * the retry path, where a FAILED run transitions to RETRYING rather
+     * than a new row being inserted.
+     *
+     * An abandoned RUNNING row would therefore wedge its connection
+     * forever. That is what `isStaleRun` and the reaper exist for.
+     */
+    uniqueIndex("sync_run_one_live_per_connection_uq")
+      .on(table.connectionId)
+      .where(sql`${table.status} in ('PENDING', 'RUNNING', 'RETRYING')`),
+  ]
 );
 
 /**

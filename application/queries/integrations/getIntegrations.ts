@@ -24,6 +24,8 @@ export interface IntegrationSummary {
   displayName: string;
   baseUrl: string;
   enabled: boolean;
+  /** Minutes between unprompted syncs; null means manual only (ADR-023). */
+  syncIntervalMinutes: number | null;
   lastSyncAt: Date | null;
   lastSuccessAt: Date | null;
   version: number;
@@ -65,6 +67,7 @@ export async function getIntegrations(actor: Actor, householdId: string): Promis
     displayName: connection.displayName,
     baseUrl: connection.baseUrl,
     enabled: connection.enabled,
+    syncIntervalMinutes: connection.syncIntervalMinutes,
     lastSyncAt: connection.lastSyncAt,
     lastSuccessAt: connection.lastSuccessAt,
     version: connection.version,

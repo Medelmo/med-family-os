@@ -10,6 +10,7 @@ import {
   resealSecret,
   sealSecret,
 } from "../../../infrastructure/crypto/secretBox";
+import { MIN_SYNC_INTERVAL_MINUTES } from "../../../domain/integrations/syncSchedule";
 import { recordAuditEvent } from "../../audit/recordAuditEvent";
 import { authorizeIntegrationAccess } from "../../policies/integrations";
 import type { Actor } from "../../policies/authorize";
@@ -165,6 +166,65 @@ export async function setIntegrationEnabled(
         action: enabled ? "integration.enabled" : "integration.disabled",
         resourceType: "integration_connection",
         resourceId: connectionId,
+      },
+      tx
+    );
+
+    return updated[0];
+  });
+}
+
+/**
+ * Sets how often a connection syncs by itself, or turns that off.
+ *
+ * `null` means manual only. This command is what a household uses to
+ * authorize unattended outbound requests on its behalf — the scheduler
+ * itself has no actor and checks no permissions (see `runScheduledSync`),
+ * so the permission check has to happen here, once, when the standing
+ * instruction is given. Owner or admin, like every other change to an
+ * integration.
+ */
+export async function setSyncInterval(
+  actor: Actor,
+  householdId: string,
+  connectionId: string,
+  expectedVersion: number,
+  intervalMinutes: number | null,
+  now: Date = new Date()
+) {
+  if (intervalMinutes !== null) {
+    if (!Number.isInteger(intervalMinutes)) {
+      throw new IntegrationRuleError("INTERVAL_INVALID", "Choose one of the offered intervals.");
+    }
+    if (intervalMinutes < MIN_SYNC_INTERVAL_MINUTES) {
+      throw new IntegrationRuleError(
+        "INTERVAL_TOO_SHORT",
+        `Sync no more often than every ${MIN_SYNC_INTERVAL_MINUTES} minutes.`
+      );
+    }
+  }
+
+  return db.transaction(async (tx) => {
+    const row = await loadConnection(tx, actor, householdId, connectionId);
+
+    const updated = await tx
+      .update(integrationConnections)
+      .set({ syncIntervalMinutes: intervalMinutes, updatedAt: now, version: row.version + 1 })
+      .where(and(eq(integrationConnections.id, connectionId), eq(integrationConnections.version, expectedVersion)))
+      .returning();
+
+    if (updated.length === 0) {
+      throw new ConflictError("This integration was changed by someone else. Reload and try again.");
+    }
+
+    await recordAuditEvent(
+      {
+        householdId,
+        actorUserId: actor.userId,
+        action: intervalMinutes === null ? "integration.schedule_cleared" : "integration.schedule_set",
+        resourceType: "integration_connection",
+        resourceId: connectionId,
+        metadata: { intervalMinutes },
       },
       tx
     );

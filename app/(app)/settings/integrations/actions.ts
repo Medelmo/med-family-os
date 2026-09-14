@@ -7,6 +7,7 @@ import {
   connectIntegration,
   replaceIntegrationCredential,
   setIntegrationEnabled,
+  setSyncInterval,
   IntegrationRuleError,
 } from "../../../../application/commands/integrations/connectionCommands";
 import { runSync } from "../../../../application/commands/integrations/runSync";
@@ -33,6 +34,11 @@ function toErrorCode(error: unknown): string {
         return "no_adapter";
       case "NO_CREDENTIAL":
         return "no_credential";
+      case "ALREADY_RUNNING":
+        return "already_running";
+      case "INTERVAL_TOO_SHORT":
+      case "INTERVAL_INVALID":
+        return "interval_invalid";
       default:
         return "invalid_input";
     }
@@ -103,6 +109,44 @@ export async function submitReplaceToken(
       householdId,
       String(formData.get("connectionId") ?? ""),
       String(formData.get("apiToken") ?? "")
+    );
+  } catch (error) {
+    return { error: toErrorCode(error) };
+  }
+
+  revalidateIntegrations();
+  return {};
+}
+
+/**
+ * Sets, or clears, how often this connection syncs by itself.
+ *
+ * This is the moment a household authorizes the application to talk to
+ * somebody else's server unattended, which is why the permission check
+ * lives in the command behind it and not in the scheduler: the scheduler
+ * has no actor to check. An empty value clears the schedule, and the
+ * connection goes back to manual only.
+ */
+export async function submitSetSchedule(
+  _prev: IntegrationFormState,
+  formData: FormData
+): Promise<IntegrationFormState> {
+  const { actor, householdId } = await requireActor();
+
+  const raw = String(formData.get("intervalMinutes") ?? "");
+  const intervalMinutes = raw === "" ? null : Number(raw);
+
+  if (intervalMinutes !== null && !Number.isFinite(intervalMinutes)) {
+    return { error: "interval_invalid" };
+  }
+
+  try {
+    await setSyncInterval(
+      actor,
+      householdId,
+      String(formData.get("connectionId") ?? ""),
+      Number(formData.get("expectedVersion") ?? 0),
+      intervalMinutes
     );
   } catch (error) {
     return { error: toErrorCode(error) };

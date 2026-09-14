@@ -562,7 +562,24 @@
       "PARTIAL": "Teilweise erledigt",
       "FAILED": "Fehlgeschlagen",
       "RETRYING": "Erneuter Versuch"
-    }
+    },
+    "scheduleTitle": "Von selbst abgleichen",
+    "scheduleExplainer": "Ist das eingestellt, kontaktiert die App das System von sich aus, ohne dass jemand danach fragt. Ein fehlgeschlagener Abgleich wird einige Male mit wachsendem Abstand wiederholt und dann mit seiner Fehlermeldung stehen gelassen.",
+    "scheduleLabel": "Wie oft?",
+    "scheduleHint": "Fünfzehn Minuten ist das kürzeste Intervall, damit der Haushalt seinen eigenen Server nicht überlastet.",
+    "scheduleSave": "Zeitplan speichern",
+    "scheduleManual": "Nur auf Anforderung",
+    "scheduleHourly": "Jede Stunde",
+    "scheduleDaily": "Täglich",
+    "scheduleEvery": "Alle {minutes} Minuten",
+    "scheduleEveryHours": "Alle {hours} Stunden",
+    "errorAlreadyRunning": "Dieser Abgleich läuft bereits. Warte, bis er fertig ist.",
+    "errorIntervalInvalid": "Wähle eines der angebotenen Intervalle.",
+    "scheduleManualSummary": "Gleicht nur auf Anforderung ab",
+    "scheduleSummaryMinutes": "Gleicht alle {minutes} Minuten von selbst ab",
+    "scheduleSummaryHours": "Gleicht alle {hours} Stunden von selbst ab",
+    "scheduleSummaryHourly": "Gleicht stündlich von selbst ab",
+    "scheduleSummaryDaily": "Gleicht einmal täglich von selbst ab"
   },
   "documents": {
     "title": "Dokumente",
