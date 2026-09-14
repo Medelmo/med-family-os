@@ -15,6 +15,12 @@ if (existsSync(".env")) {
   process.loadEnvFile(".env");
 }
 
+// Quiet the application logger during tests unless something actually goes
+// wrong: the outbox worker logs every processed event at debug level, which
+// buries real failures in the runner's output. Warnings and errors still
+// print, and an individual run can override this.
+process.env.LOG_LEVEL ??= "warn";
+
 const alias = { "@": path.resolve(__dirname, ".") };
 
 export default defineConfig({

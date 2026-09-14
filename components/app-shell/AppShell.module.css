@@ -49,6 +49,19 @@
   color: var(--color-text-primary);
 }
 
+.badge {
+  display: inline-block;
+  margin-inline-start: var(--space-1);
+  min-width: 20px;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-info);
+  color: var(--color-text-on-accent);
+  font-size: var(--text-compact-size);
+  line-height: 20px;
+  text-align: center;
+}
+
 .userArea {
   display: flex;
   align-items: center;

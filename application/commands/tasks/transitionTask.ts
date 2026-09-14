@@ -3,6 +3,7 @@ import { db } from "../../../infrastructure/db/client";
 import { tasks, taskPeople } from "../../../db/schema";
 import { applyTaskCommand, type Task, type TaskCommand } from "../../../domain/tasks/task";
 import { recordAuditEvent } from "../../audit/recordAuditEvent";
+import { emitOutboxEvent } from "../../outbox/emitOutboxEvent";
 import { authorizeTaskAccess } from "../../policies/task";
 import type { Actor } from "../../policies/authorize";
 import { AuthorizationError, ConflictError, NotFoundError } from "../../errors";
@@ -81,6 +82,23 @@ export async function transitionTask(
       },
       tx
     );
+
+    // Emitted in this same transaction (ADR-004): the event cannot exist
+    // without the assignment, nor the assignment without the event. Only
+    // when ownership actually changed — re-running START on an
+    // already-owned task should not re-notify.
+    const newOwner = updated[0].ownerPersonId;
+    if (newOwner && newOwner !== row.ownerPersonId) {
+      await emitOutboxEvent(tx, householdId, {
+        type: "task.assigned",
+        payload: {
+          taskId,
+          taskTitle: updated[0].title,
+          assignedPersonId: newOwner,
+          actorUserId: actor.userId,
+        },
+      });
+    }
 
     return updated[0];
   });

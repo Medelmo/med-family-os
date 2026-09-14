@@ -23,3 +23,7 @@ export const taskStatusEnum = pgEnum("task_status", [
 ]);
 
 export const inboxItemStatusEnum = pgEnum("inbox_item_status", ["UNTRIAGED", "TRIAGED", "DISCARDED"]);
+
+// FAILED is terminal: the worker stops retrying and leaves the row for
+// inspection rather than looping forever (ADR-013).
+export const outboxStatusEnum = pgEnum("outbox_status", ["PENDING", "PROCESSED", "FAILED"]);

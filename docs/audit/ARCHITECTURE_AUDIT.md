@@ -831,14 +831,64 @@ strict reading is implemented; loosening it is a one-line change to
 `ALLOWED_TRANSITIONS` plus a state-machines.md update, but it is a product
 decision, not an engineering one.
 
-### Not yet done in Phase 2
+### Phase 2b — outbox and notifications (implemented)
 
-`reminders/outbox` (CLAUDE.md §17's third Phase 2 item) is not
-implemented. ADR-004's transactional outbox is still the right design, but
-it needs a delivery target to be meaningful, and the natural first one —
-in-app notifications — is a subsystem of its own (CLAUDE.md §16:
-preferences, deduplication, quiet hours, escalation). It is the next
-increment rather than a forgotten one.
+CLAUDE.md §17's third Phase 2 item, completed as a second increment. This
+also closes this audit's §8 open question about **where the outbox worker
+runs**, now decided in
+[ADR-013](../architecture/adr/ADR-013-outbox-worker-hosting.md).
+
+- **`outbox_event`** — written in the *same transaction* as the domain
+  change that caused it (ADR-004), so an event can never be "sent but not
+  applied" or "applied but never sent". `emitOutboxEvent` deliberately
+  requires the transaction handle rather than defaulting to the
+  module-level `db`, because an outbox write outside its domain
+  transaction defeats the whole pattern and that mistake should be hard to
+  make by accident. A test asserts the event rolls back with a failed
+  transaction.
+- **Worker** — in-process, started once from `instrumentation.ts`,
+  claiming rows with `SELECT ... FOR UPDATE SKIP LOCKED`. The lock matters
+  even though one worker is expected: it is what makes "only one" an
+  assumption nobody has to enforce, so a rolling restart or a developer's
+  `pnpm dev` pointed at the same database cannot double-deliver. Retries
+  back off exponentially (5s→80s) and then stop in a terminal `FAILED`
+  state with the error kept on the row, rather than retrying forever.
+- **`notification`** — the first delivery channel, in-app, with a
+  **unique** `(householdId, dedupeKey)` index. That constraint, not
+  handler discipline, is what makes at-least-once delivery safe; the
+  handler uses `onConflictDoNothing` so a redelivery is a genuine no-op.
+  Per CLAUDE.md §16 a notification carries the task title and a link
+  rather than saying "Task updated".
+- Notifications are per-account: the `userId` predicate *is* the
+  authorization, and a test asserts one member naming another member's
+  notification id cannot mark it read (BOLA).
+
+**Third bug found only by looking, not by testing green.** After the
+notification rendered and 103 tests passed, Next.js's dev overlay still
+reported six issues: next-intl treats `.` in a message key as a namespace
+separator and rejects a literal dotted key, so the `types["task.assigned"]`
+label was erroring on every render. The outbox naming ("task.assigned")
+and the i18n key naming are now mapped explicitly instead of one being
+bent to fit the other. The suite was green throughout — the console was
+not.
+
+Verified live rather than only in tests: seeded a task assigned to a
+second household member, waited for the **worker inside the running app**
+to poll, and confirmed the event moved to `PROCESSED`, the notification
+row appeared, the nav badge showed "Notifications 1" for that member and
+nobody else, and "Mark all as read" cleared both the badge and the item
+state.
+
+### Not yet done
+
+- **Reminders proper** (time-triggered: "follow-up date reached", "deadline
+  in 3 days") still do not exist. The outbox delivers *event*-triggered
+  notifications; a scheduled scan that emits events when a date arrives is
+  the natural Phase 4 addition alongside the calendar, and needs no new
+  infrastructure — it emits into the same outbox.
+- Notification preferences, quiet hours and escalation (CLAUDE.md §16) are
+  not implemented. They are meaningful only once there is more than one
+  channel and more than one event type competing for attention.
 
 ---
 

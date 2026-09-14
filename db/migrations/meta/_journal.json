@@ -15,6 +15,13 @@
       "when": 1789353177982,
       "tag": "0001_wonderful_firedrake",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789362114183,
+      "tag": "0002_cooing_speed",
+      "breakpoints": true
     }
   ]
 }

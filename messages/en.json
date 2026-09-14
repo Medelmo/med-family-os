@@ -32,7 +32,9 @@
     "attention": "Attention",
     "tasks": "Tasks",
     "family": "Family",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "notifications": "Notifications",
+    "unreadCount": "{count, plural, one {# unread} other {# unread}}"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -117,6 +119,16 @@
       "WAITING_INDEFINITELY": "Waiting with no follow-up date",
       "MISSING_NEXT_ACTION": "No next action decided",
       "HIGH_PRIORITY": "Marked {priority}"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "Nothing to catch up on.",
+    "markAllRead": "Mark all as read",
+    "unread": "Unread",
+    "openTask": "Open task",
+    "types": {
+      "taskAssigned": "You were made responsible for a task"
     }
   }
 }

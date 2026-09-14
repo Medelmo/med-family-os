@@ -31,6 +31,12 @@ test.describe("signed in", () => {
     await expectNoViolations(page);
   });
 
+  test("notifications page has no automatically detectable WCAG violations", async ({ page }) => {
+    await page.goto("/notifications");
+    await expect(page.getByRole("heading", { name: "Notifications" })).toBeVisible();
+    await expectNoViolations(page);
+  });
+
   test("family page has no automatically detectable WCAG violations", async ({ page }) => {
     await page.goto("/family");
     await expect(page.getByRole("heading", { name: "Family" })).toBeVisible();

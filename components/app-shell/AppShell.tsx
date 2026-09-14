@@ -7,10 +7,11 @@ import styles from "./AppShell.module.css";
 
 export interface AppShellProps {
   userName: string;
+  unreadNotifications: number;
   children: ReactNode;
 }
 
-export async function AppShell({ userName, children }: AppShellProps) {
+export async function AppShell({ userName, unreadNotifications, children }: AppShellProps) {
   const tCommon = await getTranslations("common");
   const tNav = await getTranslations("nav");
 
@@ -36,6 +37,17 @@ export async function AppShell({ userName, children }: AppShellProps) {
           </Link>
           <Link href="/family" className={styles.navLink}>
             {tNav("family")}
+          </Link>
+          <Link href="/notifications" className={styles.navLink}>
+            {tNav("notifications")}
+            {unreadNotifications > 0 && (
+              // The count is inside the link's accessible name rather than
+              // a bare coloured dot, so a screen reader hears "Notifications,
+              // 2 unread" instead of just "Notifications".
+              <span className={styles.badge} aria-label={tNav("unreadCount", { count: unreadNotifications })}>
+                {unreadNotifications}
+              </span>
+            )}
           </Link>
         </nav>
         <div className={styles.userArea}>

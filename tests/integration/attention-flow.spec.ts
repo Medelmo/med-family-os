@@ -7,6 +7,8 @@ import {
   households,
   householdMemberships,
   inboxItems,
+  notifications,
+  outboxEvents,
   people,
   sessionRevocations,
   taskPeople,
@@ -31,7 +33,7 @@ import type { Actor } from "../../application/policies/authorize";
 
 async function resetDatabase() {
   await db.execute(
-    sql`truncate table ${auditEvents}, ${deadlines}, ${taskPeople}, ${tasks}, ${inboxItems}, ${people}, ${householdMemberships}, ${households}, ${sessionRevocations}, ${users} cascade`
+    sql`truncate table ${notifications}, ${outboxEvents}, ${auditEvents}, ${deadlines}, ${taskPeople}, ${tasks}, ${inboxItems}, ${people}, ${householdMemberships}, ${households}, ${sessionRevocations}, ${users} cascade`
   );
 }
 

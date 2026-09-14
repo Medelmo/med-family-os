@@ -6,6 +6,8 @@ import {
   households,
   householdMemberships,
   inboxItems,
+  notifications,
+  outboxEvents,
   people,
   sessionRevocations,
   taskPeople,
@@ -25,7 +27,7 @@ import {
  */
 export default async function globalSetup() {
   await db.execute(
-    sql`truncate table ${auditEvents}, ${deadlines}, ${taskPeople}, ${tasks}, ${inboxItems}, ${people}, ${householdMemberships}, ${households}, ${sessionRevocations}, ${users} cascade`
+    sql`truncate table ${notifications}, ${outboxEvents}, ${auditEvents}, ${deadlines}, ${taskPeople}, ${tasks}, ${inboxItems}, ${people}, ${householdMemberships}, ${households}, ${sessionRevocations}, ${users} cascade`
   );
 
   // Also clear the sign-in rate limiter's counters (ADR-009). Its table is

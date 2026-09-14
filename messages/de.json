@@ -32,7 +32,9 @@
     "attention": "Wichtig",
     "tasks": "Aufgaben",
     "family": "Familie",
-    "signOut": "Abmelden"
+    "signOut": "Abmelden",
+    "notifications": "Mitteilungen",
+    "unreadCount": "{count, plural, one {# ungelesen} other {# ungelesen}}"
   },
   "home": {
     "greeting": "Hallo, {name}",
@@ -117,6 +119,16 @@
       "WAITING_INDEFINITELY": "Wartet ohne Datum zum Nachfassen",
       "MISSING_NEXT_ACTION": "Kein nächster Schritt festgelegt",
       "HIGH_PRIORITY": "Markiert als {priority}"
+    }
+  },
+  "notifications": {
+    "title": "Mitteilungen",
+    "empty": "Es gibt nichts nachzuholen.",
+    "markAllRead": "Alle als gelesen markieren",
+    "unread": "Ungelesen",
+    "openTask": "Aufgabe öffnen",
+    "types": {
+      "taskAssigned": "Sie wurden für eine Aufgabe zuständig gemacht"
     }
   }
 }
