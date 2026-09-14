@@ -28,9 +28,18 @@ export const inboxItemStatusEnum = pgEnum("inbox_item_status", ["UNTRIAGED", "TR
 // inspection rather than looping forever (ADR-013).
 export const outboxStatusEnum = pgEnum("outbox_status", ["PENDING", "PROCESSED", "FAILED"]);
 
-// Mirrors domain/cases/case.ts. Note this is a different shape from
-// task_status on purpose: a case can be BLOCKED and ARCHIVED, a task
-// cannot, and a task can be reopened, a case cannot (ADR-007).
+// Mirrors domain/travel/trip.ts. There is deliberately no IN_PROGRESS or
+// COMPLETED: whether a trip is upcoming, happening or over is derived from
+// its dates, never stored (ADR-016).
+export const tripStatusEnum = pgEnum("trip_status", ["PLANNED", "CONFIRMED", "CANCELLED", "ARCHIVED"]);
+
+// Mirrors TRIP_ITEM_KINDS in domain/travel/tripItem.ts.
+export const tripItemKindEnum = pgEnum("trip_item_kind", ["ITINERARY", "PACKING", "ACCESSIBILITY"]);
+
+// Mirrors VERIFICATION_STATUSES. REFUSED is an answer, not an unfinished
+// question: knowing the hotel has no lift is actionable information.
+export const verificationStatusEnum = pgEnum("verification_status", ["UNVERIFIED", "CONFIRMED", "REFUSED"]);
+
 // Mirrors domain/finance/reimbursement.ts. WAITING -> REJECTED is a
 // deliberate addition to docs/domain/state-machines.md rather than a
 // divergence from it; see ADR-015 and the comment on ALLOWED_TRANSITIONS.
@@ -63,6 +72,9 @@ export const expenseCategoryEnum = pgEnum("expense_category", [
   "OTHER",
 ]);
 
+// Mirrors domain/cases/case.ts. Note this is a different shape from
+// task_status on purpose: a case can be BLOCKED and ARCHIVED, a task
+// cannot, and a task can be reopened, a case cannot (ADR-007).
 export const caseStatusEnum = pgEnum("case_status", [
   "DRAFT",
   "ACTIVE",

@@ -59,6 +59,33 @@ amount — counterparties routinely pay less than was asked.
 WAITING -> REJECTED and the enumeration of "any open state" were added in
 ADR-015; see that record for the reasoning.
 
+## Trip
+
+PLANNED -> CONFIRMED
+CONFIRMED -> PLANNED
+PLANNED/CONFIRMED -> CANCELLED
+CONFIRMED/CANCELLED -> ARCHIVED
+
+There is deliberately no IN_PROGRESS or COMPLETED state: whether a trip is
+upcoming, happening or over is derived from its dates and today's date,
+never stored. See ADR-016.
+
+ARCHIVED from CONFIRMED requires the trip to be over. Cancelling is the
+action for a trip that is not happening; archiving an upcoming one would
+remove it from the views that exist to prepare for it.
+
+CONFIRMED -> PLANNED exists because bookings fall through.
+
+ARCHIVED is terminal.
+
+## Accessibility requirement (trip item)
+
+UNVERIFIED -> CONFIRMED
+UNVERIFIED -> REFUSED
+
+Both answers require a source and the date it was given. REFUSED is an
+answer, not an unfinished question.
+
 ## Integration sync
 
 PENDING -> RUNNING -> SUCCEEDED

@@ -4,6 +4,7 @@ import { deadlines } from "../../../db/schema";
 import { getHouseholdTimezone, getTasks, type TaskListItem } from "../tasks/getTasks";
 import { getCases, type CaseListItem } from "../cases/getCases";
 import { getReimbursements, type ReimbursementListItem } from "../finance/getFinance";
+import { getTrips, type TripListItem } from "../travel/getTrips";
 import { getCalendarOccurrences, type CalendarOccurrence } from "../calendar/getCalendarEvents";
 import { householdToday } from "../../time";
 import { wallClockToInstant } from "../../../domain/calendar/timezone";
@@ -25,10 +26,14 @@ import { canAccess } from "../../policies/authorize";
  * "a projection, not stored truth". Storing it would create a second copy
  * of the truth that can silently disagree with the first.
  *
- * Tasks and cases are ranked in one list rather than two: the household
- * has one attention budget, and splitting it by aggregate would leave the
- * reader to merge the lists in their head — which is the work this view
- * exists to do for them.
+ * Tasks, cases, claims and trips are ranked in one list rather than four:
+ * the household has one attention budget, and splitting it by aggregate
+ * would leave the reader to merge the lists in their head — which is the
+ * work this view exists to do for them.
+ *
+ * Each aggregate maps itself onto the rules' normalised candidate at its
+ * own edge, below. The rules never see a status enum, so a new state on
+ * any aggregate cannot silently change what surfaces.
  */
 export async function getAttention(
   actor: Actor,
@@ -36,16 +41,25 @@ export async function getAttention(
   now: Date = new Date(),
   config?: AttentionRuleConfig
 ): Promise<{ items: AttentionItem[]; todayIso: string }> {
-  const [timezone, tasks, cases, claims] = await Promise.all([
-    getHouseholdTimezone(householdId),
+  const timezone = await getHouseholdTimezone(householdId);
+  const todayIso = householdToday(timezone, now);
+
+  // getTrips needs the household's "today" to derive each trip's phase,
+  // so it cannot start until the timezone is resolved.
+  const [tasks, cases, claims, trips] = await Promise.all([
     getTasks(actor, householdId),
     getCases(actor, householdId),
     getReimbursements(actor, householdId),
+    getTrips(actor, householdId, todayIso),
   ]);
-  const todayIso = householdToday(timezone, now);
 
   const items = projectAttention(
-    [...tasks.map(taskToCandidate), ...cases.map(caseToCandidate), ...claims.map(reimbursementToCandidate)],
+    [
+      ...tasks.map(taskToCandidate),
+      ...cases.map(caseToCandidate),
+      ...claims.map(reimbursementToCandidate),
+      ...trips.map(tripToCandidate),
+    ],
     todayIso,
     now,
     config
@@ -150,6 +164,36 @@ function taskToCandidate(task: TaskListItem): AttentionCandidate {
     blocked: null,
     actionable: task.status === "PLANNED" || task.status === "IN_PROGRESS",
     nextAction: task.nextAction,
+  };
+}
+
+/**
+ * Maps a trip onto the rules' normalised shape.
+ *
+ * The trip's start date is its `dueOn`: nothing is *late* about an
+ * upcoming trip, but the window to prepare for it closes on that day, and
+ * the preparation counts are what the rules judge against it
+ * (product-spec.md, "trip readiness").
+ *
+ * A trip that has already begun is not preparation any more, so only
+ * upcoming trips are handed over — the household is on the train.
+ */
+function tripToCandidate(trip: TripListItem): AttentionCandidate {
+  return {
+    id: trip.id,
+    kind: "trip",
+    title: trip.title,
+    priority: "NORMAL",
+    dueOn: trip.phase === "UPCOMING" ? trip.startsOn : null,
+    waiting: null,
+    blocked: null,
+    // A trip is something the household acts on itself rather than waits
+    // for, and its "next action" is whatever is still outstanding — which
+    // the preparation counts already say, so MISSING_NEXT_ACTION would
+    // just be noise on top of PREPARATION_INCOMPLETE.
+    actionable: false,
+    nextAction: trip.destination,
+    preparation: { outstanding: trip.readiness.outstanding, unverified: trip.readiness.unverified },
   };
 }
 

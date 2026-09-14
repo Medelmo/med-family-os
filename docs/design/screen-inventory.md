@@ -60,11 +60,15 @@
 35. Budgets — part of 31.
 
 ## Travel
-36. Trips
-37. Trip detail
-38. Itinerary
-39. Packing
-40. Accessibility facts
+36. Trips — `/trips`. Built. Each card leads with readiness in words,
+    because "one access question with no answer yet" is the thing worth
+    seeing from a list.
+37. Trip detail — `/trips/[tripId]`. Built, and carries 38, 39 and 40.
+38. Itinerary — part of 37.
+39. Packing — part of 37.
+40. Accessibility facts — part of 37, and placed **first** on the page:
+    they are the only thing on a trip that cannot be fixed the night
+    before. An answer always shows who gave it and when (ADR-016).
 
 ## Assets
 41. Assets

@@ -32,18 +32,30 @@ export type AttentionReasonCode =
   | "WAITING_INDEFINITELY"
   | "BLOCKED"
   | "MISSING_NEXT_ACTION"
-  | "HIGH_PRIORITY";
+  | "HIGH_PRIORITY"
+  | "PREPARATION_INCOMPLETE"
+  | "UNVERIFIED_FACTS";
 
 export interface AttentionRuleConfig {
   /** A due date within this many days counts as "due soon". */
   dueSoonWindowDays: number;
   /** Stalled longer than this, with no follow-up reached yet, is stale. */
   waitingStaleDays: number;
+  /**
+   * How far ahead unfinished preparation starts being surfaced.
+   *
+   * Deliberately much longer than `dueSoonWindowDays`: "due soon" is about
+   * a commitment coming up, preparation is about a window closing, and
+   * the things that cannot be fixed late — an access question nobody has
+   * answered — need weeks, not days.
+   */
+  preparationWindowDays: number;
 }
 
 export const DEFAULT_ATTENTION_RULES: AttentionRuleConfig = {
   dueSoonWindowDays: 3,
   waitingStaleDays: 14,
+  preparationWindowDays: 21,
 };
 
 /**
@@ -60,6 +72,10 @@ const WEIGHTS: Record<AttentionReasonCode, number> = {
   MISSING_NEXT_ACTION: 20,
   WAITING_INDEFINITELY: 15,
   HIGH_PRIORITY: 30,
+  // An unanswered access question outranks an unpacked bag: a bag can be
+  // packed the night before, and a hotel cannot grow a lift.
+  UNVERIFIED_FACTS: 65,
+  PREPARATION_INCOMPLETE: 35,
 };
 
 const PRIORITY_BONUS: Record<Priority, number> = {
@@ -88,9 +104,29 @@ export interface BlockedContext {
   reason: string | null;
 }
 
+/**
+ * Work that must be finished *before* a date arrives, rather than by it.
+ *
+ * product-spec.md lists "trip preparation incomplete" as an attention
+ * trigger. It is not the same thing as overdue: nothing is late, and the
+ * date has not passed — what matters is that the window to act is
+ * closing. So these only fire once the date is near, because nagging
+ * about an unpacked bag two months out is how a household learns to
+ * ignore the list.
+ *
+ * Kept aggregate-agnostic like everything else here: an asset's service
+ * checklist would use the same shape.
+ */
+export interface PreparationContext {
+  /** Things still to do. */
+  outstanding: number;
+  /** Questions asked of someone else that have no answer yet. */
+  unverified: number;
+}
+
 export interface AttentionCandidate {
   id: string;
-  kind: "task" | "case" | "reimbursement";
+  kind: "task" | "case" | "reimbursement" | "trip";
   title: string;
   priority: Priority;
   /** Date-only, as "YYYY-MM-DD" — see toIsoDate. */
@@ -104,6 +140,8 @@ export interface AttentionCandidate {
    */
   actionable: boolean;
   nextAction: string | null;
+  /** Only meaningful alongside a `dueOn`; see PreparationContext. */
+  preparation?: PreparationContext | null;
 }
 
 export interface AttentionItem extends AttentionCandidate {
@@ -150,6 +188,15 @@ export function evaluateAttention(
       reasons.push({ code: "OVERDUE", context: { daysOverdue: Math.abs(daysUntilDue) } });
     } else if (daysUntilDue <= config.dueSoonWindowDays) {
       reasons.push({ code: "DUE_SOON", context: { daysUntilDue } });
+    }
+
+    // Preparation is judged against its own, longer window: a bag can be
+    // packed the night before, but a hotel cannot grow a lift, and asking
+    // three days out is asking too late.
+    if (candidate.preparation && daysUntilDue >= 0 && daysUntilDue <= config.preparationWindowDays) {
+      const { outstanding, unverified } = candidate.preparation;
+      if (unverified > 0) reasons.push({ code: "UNVERIFIED_FACTS", context: { unverified, daysUntilDue } });
+      if (outstanding > 0) reasons.push({ code: "PREPARATION_INCOMPLETE", context: { outstanding, daysUntilDue } });
     }
   }
 

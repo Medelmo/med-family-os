@@ -9,4 +9,5 @@ export * from "./deadline";
 export * from "./case";
 export * from "./calendar";
 export * from "./finance";
+export * from "./travel";
 export * from "./outbox";

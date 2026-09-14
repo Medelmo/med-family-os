@@ -175,3 +175,59 @@ describe("toIsoDate", () => {
     expect(toIsoDate(new Date("2026-09-14T00:00:00Z"))).toBe("2026-09-14");
   });
 });
+
+/**
+ * Preparation is not the same thing as overdue: nothing is late, and the
+ * date has not passed — what matters is that the window to act on it is
+ * closing (product-spec.md, "trip preparation incomplete").
+ */
+describe("attention rules: preparation before a date", () => {
+  const preparing = (days: number, preparation: { outstanding: number; unverified: number }) =>
+    candidate({ kind: "trip", dueOn: isoDateAfter(days), preparation, nextAction: "Book the hotel" });
+
+  it("says nothing about preparation that is still months away", () => {
+    expect(codes(preparing(60, { outstanding: 4, unverified: 2 }))).not.toContain("PREPARATION_INCOMPLETE");
+    expect(codes(preparing(60, { outstanding: 4, unverified: 2 }))).not.toContain("UNVERIFIED_FACTS");
+  });
+
+  it("surfaces unfinished preparation once the window opens", () => {
+    const reasons = codes(preparing(DEFAULT_ATTENTION_RULES.preparationWindowDays, { outstanding: 4, unverified: 0 }));
+    expect(reasons).toContain("PREPARATION_INCOMPLETE");
+  });
+
+  it("counts what is outstanding, so the reason can be explained", () => {
+    expect(evaluateAttention(preparing(10, { outstanding: 4, unverified: 0 }), TODAY, NOW)).toContainEqual({
+      code: "PREPARATION_INCOMPLETE",
+      context: { outstanding: 4, daysUntilDue: 10 },
+    });
+  });
+
+  it("says nothing when everything is done", () => {
+    expect(codes(preparing(10, { outstanding: 0, unverified: 0 }))).not.toContain("PREPARATION_INCOMPLETE");
+  });
+
+  // A bag can be packed the night before; a hotel cannot grow a lift.
+  it("ranks an unanswered question above an unfinished list", () => {
+    const reasons = evaluateAttention(preparing(10, { outstanding: 3, unverified: 1 }), TODAY, NOW);
+    const order = reasons.map((r) => r.code);
+    expect(order.indexOf("UNVERIFIED_FACTS")).toBeLessThan(order.indexOf("PREPARATION_INCOMPLETE"));
+
+    const [unverifiedOnly] = projectAttention([preparing(10, { outstanding: 0, unverified: 1 })], TODAY, NOW);
+    const [outstandingOnly] = projectAttention([preparing(10, { outstanding: 1, unverified: 0 })], TODAY, NOW);
+    expect(unverifiedOnly.score).toBeGreaterThan(outstandingOnly.score);
+  });
+
+  // Once the date has passed, the item is overdue; preparing for it is no
+  // longer the useful thing to say.
+  it("stops talking about preparation once the date is behind us", () => {
+    const reasons = codes(candidate({ kind: "trip", dueOn: isoDateAfter(-1), preparation: { outstanding: 3, unverified: 1 } }));
+    expect(reasons).toContain("OVERDUE");
+    expect(reasons).not.toContain("PREPARATION_INCOMPLETE");
+  });
+
+  it("ignores preparation on something with no date at all", () => {
+    expect(codes(candidate({ dueOn: null, preparation: { outstanding: 9, unverified: 9 } }))).not.toContain(
+      "PREPARATION_INCOMPLETE"
+    );
+  });
+});

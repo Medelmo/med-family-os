@@ -50,6 +50,13 @@
       "when": 1789380527113,
       "tag": "0006_sticky_smiling_tiger",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789384595259,
+      "tag": "0007_premium_owl",
+      "breakpoints": true
     }
   ]
 }

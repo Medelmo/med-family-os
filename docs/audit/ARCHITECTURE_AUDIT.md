@@ -1463,3 +1463,119 @@ for the same reason.
 The preview is capped at 1000 rows and 1 MB. A larger file has to be split.
 Streaming it would mean giving up the "review the whole thing first"
 property, which is the feature.
+
+---
+
+## Phase 6a: Trips, accessibility verification and packing
+
+Vertical slice 6 of `docs/implementation/implementation-plan.md`. The
+domain model gave Trip one line and the state machines document gave it
+nothing, so most of this was decisions; **ADR-016** records them and
+`docs/domain/state-machines.md` now has a Trip section rather than a gap.
+
+### The decision worth arguing about
+
+**A trip has no IN_PROGRESS or COMPLETED status.** Whether it is upcoming,
+happening or over is a fact about today's date and the trip's two date
+columns. Storing it as well would need a job to maintain, could disagree
+with the dates it came from, and would be wrong for any household whose
+instance was off over the weekend.
+
+This is the attention engine's own argument — "a projection, not stored
+truth" — applied to something small enough that storing it would have
+looked harmless. The test reads one row on three different days and gets
+three answers.
+
+What *is* stored is what a date cannot say: committed, given up, or
+finished with. `CONFIRMED -> PLANNED` exists because bookings fall
+through, and a household without it would have to either leave the record
+lying or cancel a trip it is still taking.
+
+### Access requirements are the point of the feature
+
+They are placed first on the page, ahead of packing and the itinerary,
+because they are the only thing on a trip that cannot be fixed the night
+before.
+
+An answer must carry **who said so and when** — enforced by the domain and
+by a database `CHECK`, because "the hotel is step-free" is worth nothing
+without a source the household can weigh, re-check, or hold someone to on
+arrival.
+
+`REFUSED` counts as answered. A household that knows the hotel has no lift
+can act on it; treating that as an open question would nag them about
+something they have already settled.
+
+### Attention gained a genuinely new kind of reason
+
+"Trip readiness" is not overdue-ness. Nothing is late, and the date has
+not passed — the window to act is closing. `UNVERIFIED_FACTS` and
+`PREPARATION_INCOMPLETE` fire only inside a 21-day window, seven times
+longer than "due soon", because the things that cannot be fixed late need
+weeks. An unanswered access question outranks an unpacked bag: a bag can
+be packed the night before, and a hotel cannot grow a lift.
+
+`PreparationContext` says nothing about trips, so the rules module stays
+aggregate-agnostic — the property that let reimbursements reuse the
+waiting rules in Phase 5 with no new rule at all.
+
+### An authorization bug the tests found, not the reasoning
+
+`docs/permissions.md` gives a CHILD a "participant-safe view" of trips.
+The first draft scoped a trip item that names nobody to *nobody*, and the
+policy kernel gives a CHILD only what is explicitly scoped to them. The
+result: a child on the trip could see that it existed and **not one line
+on it** — the participant-safe view exactly inverted.
+
+The fix is `tripItemScope()`: an item naming a person is scoped to that
+person (because "Lukas needs a step-free bathroom" is narrower than the
+trip and health-adjacent); an item naming nobody inherits the trip's
+participants. One function, used by both the read and the write path, so
+the two cannot drift.
+
+A second consequence, also found by a failing test and now documented
+rather than patched over: **a trip with no participants is invisible to
+every child in the household.** That is the correct reading of CLAUDE.md
+§5 rather than a gap — a trip nobody has been added to is a trip nobody
+has been told they are going on — so the form says so where the
+participants are chosen, instead of the rule being a surprise.
+
+### Counts agree with lists
+
+Readiness is derived from the items a reader is actually allowed to see,
+so the summary and the list underneath always match. Same rule as the
+finance totals, same reason: a count including rows the page refuses to
+show is a disclosure by arithmetic.
+
+### A test that was passing for the wrong reason
+
+The E2E helper asserted `getByRole("heading", { name: title })` after
+clicking into a trip. The list renders each title as an `h2` wrapping the
+link, so that assertion was already satisfied *on the list page* — it
+never waited for the navigation at all, and the next assertion then
+matched six cards instead of one. It now anchors on the detail page's
+`h1`, which only exists there. Worth recording because the test was
+green on the desktop project and only failed on mobile, where the timing
+differs: a test that does not wait for what it claims to wait for is a
+test that fails somewhere else, later, for no visible reason.
+
+### Verified
+
+`tsc --noEmit`, `eslint .`, 406 unit and integration tests, `next build`,
+and 103 E2E tests (2 skipped by project gate) against the standalone
+bundle. The trip detail page has its own horizontal-overflow guard inside
+the journey, because it is the busiest page in the app and lives behind a
+dynamic route the page-level loop cannot reach.
+
+### Not done in Phase 6a
+
+- **Assets, warranties and maintenance** — vertical slice 7, the other
+  half of this phase.
+- **"Stale external verification"** from product-spec.md. Requirements
+  record `verifiedOn`, so the data exists, but no staleness window is
+  enforced: there is no evidence yet of what window matters, and a guessed
+  one would either nag or lull. The unanswered case is the one that bites,
+  and it is covered.
+- **Trip-linked deadlines, expenses and documents.** The domain model
+  allows a deadline to point at a trip; doing it well needs the same
+  generic linking work Phase 3 deferred.

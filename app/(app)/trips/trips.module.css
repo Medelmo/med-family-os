@@ -1,0 +1,248 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 720px;
+}
+
+.title {
+  font-size: var(--text-h1-size);
+  line-height: var(--text-h1-line);
+  margin: 0 0 var(--space-2);
+}
+
+.subtitle {
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-line);
+  margin: 0 0 var(--space-4);
+}
+
+.description,
+.hint {
+  margin: 0 0 var(--space-3);
+  color: var(--color-text-secondary);
+}
+
+.breadcrumb {
+  margin: 0;
+  font-size: var(--text-compact-size);
+}
+
+.list,
+.plainList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.itemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.itemTitle {
+  margin: 0;
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-line);
+}
+
+.itemTitle a {
+  color: inherit;
+}
+
+.dates {
+  margin: 0;
+  font-weight: 600;
+}
+
+.meta {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+}
+
+/* Every badge carries its own words; the colour is a second signal, never
+   the only one (CLAUDE.md §13). */
+.status,
+.verification {
+  display: inline-block;
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+  font-weight: 600;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.status[data-status="CONFIRMED"],
+.verification[data-verification="CONFIRMED"] {
+  color: var(--color-success);
+  background: var(--color-success-surface);
+  border-color: transparent;
+}
+
+.status[data-status="PLANNED"] {
+  color: var(--color-info);
+  background: var(--color-info-surface);
+  border-color: transparent;
+}
+
+.status[data-status="CANCELLED"],
+.verification[data-verification="REFUSED"] {
+  color: var(--color-critical);
+  background: var(--color-critical-surface);
+  border-color: transparent;
+}
+
+.verification[data-verification="UNVERIFIED"] {
+  color: var(--color-warning);
+  background: var(--color-warning-surface);
+  border-color: transparent;
+}
+
+/* --- Readiness --- */
+
+.readinessReady,
+.readinessPending,
+.readinessBlocked {
+  margin: 0;
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+  font-weight: 600;
+}
+
+.readinessReady {
+  color: var(--color-success);
+}
+
+.readinessPending {
+  color: var(--color-warning);
+}
+
+.readinessBlocked {
+  color: var(--color-critical);
+}
+
+/* --- Lists on the detail page --- */
+
+.checklistRow,
+.requirement {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.checklistRow {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  /* A comfortable target row, per WCAG 2.2 SC 2.5.8. */
+  min-height: 44px;
+}
+
+.requirementHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.itemLabel {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Done is struck through *and* said in the button next to it, so the
+   state is never carried by styling alone. */
+.itemDone {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-decoration: line-through;
+  color: var(--color-text-secondary);
+}
+
+.forWhom {
+  color: var(--color-text-secondary);
+}
+
+/* --- Forms --- */
+
+.form,
+.actionForm,
+.verifyForm {
+  display: flex;
+  flex-direction: column;
+}
+
+.form,
+.verifyForm {
+  margin-top: var(--space-4);
+}
+
+.toggleForm {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.fieldset {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  margin: 0 0 var(--space-4);
+}
+
+.legend {
+  padding: 0 var(--space-2);
+  font-weight: 600;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-1) 0;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.actionCard {
+  display: flex;
+  flex-direction: column;
+}
+
+.empty {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.error {
+  margin: 0 0 var(--space-3);
+  color: var(--color-critical);
+  font-size: var(--text-compact-size);
+}
