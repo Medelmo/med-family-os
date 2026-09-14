@@ -503,5 +503,18 @@
       "TOOL": "Werkzeug",
       "OTHER": "Sonstiges"
     }
+  },
+  "ha": {
+    "title": "Haushalt auf einen Blick",
+    "overdue": "Überfällig",
+    "dueToday": "Heute fällig",
+    "critical": "Kritisch",
+    "waiting": "Wartet auf jemanden",
+    "eventsToday": "Termine heute",
+    "nextDeadline": "Nächste Frist",
+    "nextTrip": "Nächste Reise",
+    "none": "Keine",
+    "asOf": "Stand {time}",
+    "openApp": "App öffnen"
   }
 }

@@ -1693,3 +1693,110 @@ Both vertical slices of Phase 6 are done. The remaining phases are 7
 (integrations: Paperless, Nextcloud, Home Assistant, calendar providers)
 and 8 (AI), which CLAUDE.md §17 gates behind "authorization, audit and
 provenance foundations are proven".
+
+---
+
+## Phase 7a: The Home Assistant projection
+
+The first integration, and the one with the sharpest edges: CLAUDE.md §10
+is the most prescriptive section in the whole brief, and it is
+prescriptive about what must **not** cross the boundary. **ADR-018**
+records the decisions.
+
+### The projection is deliberately narrower than the brief allows
+
+§10 permits the summary to include "today, next deadlines, family events,
+upcoming trip". This implementation carries **no free text at all** —
+counts and dates only. No titles, no names, no destinations, no amounts.
+
+The reason is that §10's own prohibition cannot otherwise be enforced.
+Every title in this application is user-authored. A household that writes
+"Lukas — oncology follow-up" as a task title has no way to know that
+string will be rendered on a tablet in the hallway, where visitors, carers
+and the children themselves can read it. No classifier can reliably decide
+whether a free-text field contains a health detail, and a rule that
+depended on one would fail quietly in exactly the cases that matter most.
+
+So the guarantee is structural rather than procedural: `HouseholdGlance`
+contains integers and date strings, and an integration test asserts that
+every value in it is a number, a date-shaped string, or null — with
+deliberately sensitive records (an oncology task, a benefits case, a
+health expense) in the database at the time.
+
+This is the first place in the project where I have shipped **less** than
+the specification permits. It is worth being explicit that this was a
+choice and not an omission: the household loses some glanceability and
+gains a property that can be tested rather than trusted.
+
+### Counts include sensitive items; that is the line
+
+A count carries no content. "Three things need attention" reveals nothing
+about what they are, and a badge that quietly under-reported because two
+were medical would defeat the point of having one. **Aggregate over
+everything, disclose nothing.**
+
+### Two doors, two credentials, and a third option refused
+
+- `GET /api/ha/summary` — a machine. Bearer token in a header, compared in
+  constant time on SHA-256 digests so neither the value nor its length
+  leaks, minimum 32 characters, and **failing closed when unconfigured**:
+  an unset token returns 503 rather than opening the endpoint.
+- `/ha` — a tablet. An ordinary session.
+
+The tempting third option, a token in the dashboard card's URL, is
+refused and tested against. A secret in a URL ends up in the reverse
+proxy's access log, the browser's history and every screenshot of the
+dashboard.
+
+The endpoint is in the proxy's public-route list — a machine asking for
+JSON should not receive a 307 to an HTML sign-in page — which makes the
+token check the only thing in front of it, and is why that route file is
+short and does nothing else.
+
+### A test of mine that passed for the wrong reason
+
+`checkHaToken(presented, configured)` originally defaulted `configured` to
+`process.env.HA_READONLY_TOKEN`. The "fails closed when nothing is
+configured" test passed `undefined` — which, against a defaulted
+parameter, means *use the default*, not *nothing is configured*. It passed
+only because the local dev token happened to be 19 characters, below the
+minimum.
+
+It surfaced the moment the dev token was lengthened so the E2E happy path
+would actually run: two security tests flipped to failing, in a file that
+had passed in isolation minutes earlier.
+
+The fix is the better design anyway: the parameter is now required, and
+the route reads the environment. That matches how every other rule in this
+codebase takes its clock and its timezone as arguments rather than reading
+them. A security check whose test cannot distinguish "unconfigured" from
+"configured with something else" is not a security check.
+
+While fixing it, `.env.example`'s placeholder also turned out to be
+shorter than the code accepts — which would have produced a 503 that
+looked like a bug rather than the refusal it is. It now states the minimum
+and how to generate one.
+
+### Verified
+
+`tsc --noEmit`, `eslint .`, 472 unit and integration tests, `next build`,
+and 137 E2E tests (2 skipped by project gate) against the standalone
+bundle — plus the endpoint exercised directly with a correct token (200
+and the expected shape), no token (401) and a wrong token (401).
+
+### Not done
+
+- **Provider adapters** — Paperless, Nextcloud, calendar providers — which
+  are the rest of Phase 7. They need `IntegrationConnection` and `SyncRun`
+  from the domain model, and, more seriously, somewhere to keep an
+  external credential: CLAUDE.md §7 forbids storing long-lived external
+  secrets in ordinary domain tables, so that is a design decision of its
+  own before any adapter is written.
+- **`frame-ancestors`.** The CSP does not name Home Assistant's origin, so
+  a Webpage card may refuse to embed `/ha`. Permitting one known origin is
+  a per-deployment decision;
+  `docs/integrations/home-assistant.md` says not to weaken security
+  globally, so nothing is weakened here.
+- **Rate limiting on the endpoint.** The token is the control and the
+  surface is a LAN. Worth revisiting if the app is ever exposed beyond
+  one.

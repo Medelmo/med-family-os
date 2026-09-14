@@ -503,5 +503,18 @@
       "TOOL": "Tool",
       "OTHER": "Other"
     }
+  },
+  "ha": {
+    "title": "Household at a glance",
+    "overdue": "Overdue",
+    "dueToday": "Due today",
+    "critical": "Critical",
+    "waiting": "Waiting on someone",
+    "eventsToday": "Events today",
+    "nextDeadline": "Next deadline",
+    "nextTrip": "Next trip",
+    "none": "None",
+    "asOf": "As of {time}",
+    "openApp": "Open the app"
   }
 }

@@ -44,7 +44,15 @@ export const authConfig = {
         request.nextUrl.pathname.startsWith("/login") ||
         request.nextUrl.pathname.startsWith("/setup") ||
         request.nextUrl.pathname.startsWith("/api/health") ||
-        request.nextUrl.pathname.startsWith("/api/ready");
+        request.nextUrl.pathname.startsWith("/api/ready") ||
+        // The Home Assistant summary authenticates itself with a scoped
+        // bearer token (CLAUDE.md §10): the caller is a machine with no
+        // session, and redirecting it to a sign-in page would be a 307 and
+        // an HTML body where it asked for JSON. "Public" here means only
+        // that the session check does not apply — app/api/ha/summary/route.ts
+        // refuses every request that does not present the token, and fails
+        // closed when no token is configured at all.
+        request.nextUrl.pathname.startsWith("/api/ha/");
       if (isPublicRoute) return true;
       return isLoggedIn;
     },
