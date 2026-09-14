@@ -13,7 +13,7 @@ import {
 import { authorizeExpenseAccess } from "../../../application/policies/finance";
 import { Card } from "../../../components/ui/Card";
 import { Money } from "../../../components/ui/Money";
-import { BudgetForm, RecordExpenseForm } from "./FinanceClient";
+import { BudgetForm, ImportExpensesForm, RecordExpenseForm } from "./FinanceClient";
 import styles from "./finance.module.css";
 
 /**
@@ -212,6 +212,7 @@ export default async function FinancePage({
             people={members.map((member) => ({ id: member.personId, name: member.displayName }))}
           />
           <BudgetForm categories={categoryOptions} today={today} />
+          <ImportExpensesForm month={month} />
         </>
       )}
     </div>

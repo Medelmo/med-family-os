@@ -46,7 +46,10 @@
     form that adds to both are one question ("how are we doing this
     month?"), and separating them would mean three navigations to answer
     it.
-32. Expenses — part of 31.
+32. Expenses — part of 31, along with CSV import and export. Import is a
+    two-step upload-then-review flow on the same page rather than a route
+    of its own: the review is only meaningful next to the month it would
+    change.
 33. Expense detail — **not built.** An expense is currently record-and-
     archive; there is nothing on one worth a page of its own until it can
     be edited or linked to a case.

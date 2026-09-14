@@ -16,6 +16,12 @@ import {
 } from "../../../application/commands/finance/reimbursementCommands";
 import { setBudget } from "../../../application/commands/finance/setBudget";
 import { parseAmountToMinor } from "../../../domain/finance/money";
+import {
+  importExpenses,
+  previewExpenseImport,
+  IMPORT_MAX_BYTES,
+} from "../../../application/commands/finance/importExpenses";
+import type { ImportPlan } from "../../../domain/finance/expenseImport";
 import { AuthorizationError, ConflictError, NotFoundError } from "../../../application/errors";
 import type { ReimbursementCommand } from "../../../domain/finance/reimbursement";
 
@@ -227,4 +233,63 @@ export async function submitClaimTransition(
   revalidateFinance();
   revalidatePath(`/finance/claims/${claimId}`);
   return {};
+}
+
+// --- CSV import -------------------------------------------------------
+
+export interface ImportFormState {
+  error?: string;
+  /** The reviewable plan, and the exact text it was made from. */
+  preview?: { csv: string; plan: ImportPlan };
+  result?: { imported: number; skipped: number };
+}
+
+async function readUpload(formData: FormData): Promise<{ text: string } | { error: string }> {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "no_file" };
+  if (file.size > IMPORT_MAX_BYTES) return { error: "file_too_large" };
+
+  const text = await file.text();
+  // A file the browser labelled as CSV can still be anything; the plan is
+  // what decides, and it reports rather than guesses.
+  return { text };
+}
+
+export async function submitPreviewImport(
+  _prev: ImportFormState,
+  formData: FormData
+): Promise<ImportFormState> {
+  const { actor, householdId } = await requireActor();
+
+  const upload = await readUpload(formData);
+  if ("error" in upload) return { error: upload.error };
+
+  try {
+    const plan = await previewExpenseImport(actor, householdId, upload.text);
+    return { preview: { csv: upload.text, plan } };
+  } catch (error) {
+    return { error: toErrorCode(error) };
+  }
+}
+
+export async function submitConfirmImport(
+  _prev: ImportFormState,
+  formData: FormData
+): Promise<ImportFormState> {
+  const { actor, householdId } = await requireActor();
+
+  // The reviewed text, not the reviewed rows. importExpenses re-plans it
+  // with the same pure function, so the preview and the write cannot
+  // disagree, and nothing structural has to be trusted across the wire.
+  const csv = String(formData.get("csv") ?? "");
+  if (!csv.trim()) return { error: "no_file" };
+  if (csv.length > IMPORT_MAX_BYTES) return { error: "file_too_large" };
+
+  try {
+    const result = await importExpenses(actor, householdId, csv);
+    revalidateFinance();
+    return { result };
+  } catch (error) {
+    return { error: toErrorCode(error) };
+  }
 }

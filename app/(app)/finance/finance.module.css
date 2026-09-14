@@ -307,3 +307,57 @@
     gap: var(--space-1) 0;
   }
 }
+
+/* --- CSV import --- */
+
+.fileLabel {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+}
+
+.file {
+  display: block;
+  width: 100%;
+  padding: var(--space-2);
+  margin-bottom: var(--space-2);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  /* WCAG 2.2 SC 2.5.8: the file button is the target here. */
+  min-height: 44px;
+}
+
+.previewBlock {
+  margin-top: var(--space-5);
+}
+
+/* The one element allowed to scroll sideways on a phone, and only inside
+   its own container (docs/design/implementation-handoff.md). */
+.tableScroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* Each row state says what it is in words; the colour only reinforces it. */
+.rowOk {
+  color: var(--color-success);
+}
+
+.rowDuplicate {
+  color: var(--color-warning);
+}
+
+.rowSkipped {
+  color: var(--color-critical);
+}
+
+.success {
+  margin: var(--space-3) 0 0;
+  color: var(--color-success);
+}
+
+.exportLine {
+  margin: var(--space-5) 0 0;
+}

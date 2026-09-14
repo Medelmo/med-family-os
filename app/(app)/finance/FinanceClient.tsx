@@ -5,18 +5,23 @@ import { useTranslations } from "next-intl";
 import {
   submitClaimTransition,
   submitCreateClaim,
+  submitConfirmImport,
+  submitPreviewImport,
   submitRecordExpense,
   submitSetBudget,
   type FinanceFormState,
+  type ImportFormState,
 } from "./actions";
 import { Button } from "../../../components/ui/Button";
 import { Card } from "../../../components/ui/Card";
 import { SelectField, type SelectOption } from "../../../components/ui/SelectField";
+import { Money } from "../../../components/ui/Money";
 import { TextField } from "../../../components/ui/TextField";
 import { useHydrated } from "../../../components/ui/useHydrated";
 import styles from "./finance.module.css";
 
 const EMPTY: FinanceFormState = {};
+const EMPTY_IMPORT: ImportFormState = {};
 
 const ERROR_KEYS = {
   conflict: "errorConflict",
@@ -216,5 +221,167 @@ export function ClaimActionForm({
         {label}
       </Button>
     </form>
+  );
+}
+
+const IMPORT_ERROR_KEYS = {
+  no_file: "errorNoFile",
+  file_too_large: "errorFileTooLarge",
+  not_authorized: "errorNotAuthorized",
+  conflict: "errorConflict",
+  invalid_input: "errorInvalidInput",
+} as const;
+
+const PLAN_ERROR_KEYS = {
+  EMPTY_FILE: "importEmptyFile",
+  NO_HEADER: "importNoHeader",
+  TOO_MANY_ROWS: "importTooManyRows",
+  MISSING_COLUMNS: "importMissingColumns",
+} as const;
+
+const ROW_PROBLEM_KEYS = {
+  MISSING_DESCRIPTION: "problemMissingDescription",
+  BAD_DATE: "problemBadDate",
+  BAD_AMOUNT: "problemBadAmount",
+  NON_POSITIVE_AMOUNT: "problemNonPositiveAmount",
+  BAD_CURRENCY: "problemBadCurrency",
+  UNKNOWN_CATEGORY: "problemUnknownCategory",
+} as const;
+
+/**
+ * Import in two steps: read the file, show exactly what it would do, and
+ * only write when the household says so.
+ *
+ * ADR-015 §2 commits to this specifically because the amount rule is
+ * knowingly ambiguous for input like `1,234` and can be wrong by a factor
+ * of a thousand. A preview is the only honest way to use a parser with
+ * that property, and it is also what turns "12 rows were skipped" from a
+ * silent loss into a visible decision.
+ */
+export function ImportExpensesForm({ month }: { month: string }) {
+  const t = useTranslations("finance");
+  const [previewState, previewAction, previewPending] = useActionState(submitPreviewImport, EMPTY_IMPORT);
+  const [confirmState, confirmAction, confirmPending] = useActionState(submitConfirmImport, EMPTY_IMPORT);
+  const hydrated = useHydrated();
+
+  const state = confirmState.result || confirmState.error ? confirmState : previewState;
+  const plan = previewState.preview?.plan;
+
+  return (
+    <Card>
+      <h2 className={styles.subtitle}>{t("importTitle")}</h2>
+      <p className={styles.hint}>{t("importHint")}</p>
+
+      <form action={previewAction} className={styles.form}>
+        <label className={styles.fileLabel} htmlFor="import-file">
+          {t("importFileLabel")}
+        </label>
+        <input
+          id="import-file"
+          className={styles.file}
+          type="file"
+          name="file"
+          accept=".csv,text/csv"
+          required
+          aria-describedby="import-format"
+        />
+        <p id="import-format" className={styles.hint}>
+          {t("importColumns")}
+        </p>
+        {state.error && (
+          <p role="alert" className={styles.error}>
+            {t(IMPORT_ERROR_KEYS[state.error as keyof typeof IMPORT_ERROR_KEYS] ?? "errorInvalidInput")}
+          </p>
+        )}
+        <Button type="submit" disabled={previewPending || !hydrated}>
+          {t("importPreview")}
+        </Button>
+      </form>
+
+      {plan && !plan.ok && (
+        <p role="alert" className={styles.error}>
+          {plan.error === "MISSING_COLUMNS"
+            ? t("importMissingColumns", { columns: (plan.missingColumns ?? []).join(", ") })
+            : t(PLAN_ERROR_KEYS[plan.error])}
+        </p>
+      )}
+
+      {plan?.ok && (
+        <section aria-labelledby="import-preview-heading" className={styles.previewBlock}>
+          <h3 id="import-preview-heading" className={styles.subtitle}>
+            {t("importPreviewHeading")}
+          </h3>
+          <p className={styles.hint}>{t("importCounts", { importable: plan.importable, rejected: plan.rejected })}</p>
+
+          <div className={styles.tableScroll}>
+            <table className={styles.table}>
+              <caption className={styles.tableCaption}>{t("importPreviewCaption")}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{t("columnLine")}</th>
+                  <th scope="col">{t("columnDate")}</th>
+                  <th scope="col">{t("columnDescription")}</th>
+                  <th scope="col" className={styles.numeric}>
+                    {t("columnAmount")}
+                  </th>
+                  <th scope="col">{t("columnStatus")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {plan.rows.map((row) => (
+                  <tr key={row.line}>
+                    <td>{row.line}</td>
+                    <td>{row.incurredOn || "—"}</td>
+                    <td>{row.description || "—"}</td>
+                    <td className={styles.numeric}>
+                      {/* The interpreted amount, which is the whole point
+                          of showing this before writing anything. */}
+                      {row.problems.some((p) => p.code === "BAD_AMOUNT") ? (
+                        "—"
+                      ) : (
+                        <Money amountMinor={row.amountMinor} currency={row.currency} />
+                      )}
+                    </td>
+                    <td>
+                      {row.problems.length > 0 ? (
+                        <span className={styles.rowSkipped}>
+                          {row.problems.map((problem) => t(ROW_PROBLEM_KEYS[problem.code])).join("; ")}
+                        </span>
+                      ) : row.possibleDuplicate ? (
+                        <span className={styles.rowDuplicate}>{t("rowDuplicate")}</span>
+                      ) : (
+                        <span className={styles.rowOk}>{t("rowWillImport")}</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {confirmState.result ? (
+            <p role="status" className={styles.success}>
+              {t("importDone", { imported: confirmState.result.imported, skipped: confirmState.result.skipped })}
+            </p>
+          ) : (
+            <form action={confirmAction} className={styles.form}>
+              {/* The reviewed text travels, not the reviewed rows: the
+                  server re-plans it with the same pure function, so what
+                  was shown and what is written cannot differ. */}
+              <input type="hidden" name="csv" value={previewState.preview?.csv ?? ""} />
+              <Button type="submit" disabled={confirmPending || !hydrated || plan.importable === 0}>
+                {t("importConfirm", { count: plan.importable })}
+              </Button>
+            </form>
+          )}
+        </section>
+      )}
+
+      <p className={styles.exportLine}>
+        <a href={`/api/finance/expenses?month=${month}`} download>
+          {t("exportMonth", { month })}
+        </a>
+      </p>
+    </Card>
   );
 }

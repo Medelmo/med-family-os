@@ -8,6 +8,9 @@ import {
   type CategorySpend,
 } from "../../../domain/finance/budget";
 import type { ExpenseCategory } from "../../../domain/finance/expense";
+import { toCsv } from "../../../domain/finance/csv";
+import { EXPORT_HEADER } from "../../../domain/finance/expenseImport";
+import { formatMinorAsDecimal } from "../../../domain/finance/money";
 import {
   OPEN_REIMBURSEMENT_STATUSES,
   outstandingMinor,
@@ -299,6 +302,36 @@ export async function getReimbursement(
       })),
     timeline: timelineRows.map((e) => ({ id: e.id, type: e.type, summary: e.summary, createdAt: e.createdAt })),
   };
+}
+
+/**
+ * A month's expenses as CSV, built only from rows the actor may read.
+ *
+ * It goes through `getExpensesForMonth`, so the export can never contain
+ * something the page would refuse to show — an export that quietly widened
+ * access would be the most damaging possible version of that bug, because
+ * the file then leaves the application entirely.
+ *
+ * `toCsv` neutralises cells a spreadsheet would execute as a formula; see
+ * domain/finance/csv.ts. That matters most here, on the way out.
+ */
+export async function exportExpensesCsv(actor: Actor, householdId: string, month: string): Promise<string> {
+  const rows = await getExpensesForMonth(actor, householdId, month);
+
+  return toCsv([
+    [...EXPORT_HEADER],
+    ...rows.map((expense) => [
+      expense.incurredOn,
+      expense.description,
+      // The machine-readable decimal, not a localised string: this file is
+      // meant to be re-importable, and the importer's own rule is what
+      // reads it back.
+      formatMinorAsDecimal(expense.amountMinor, expense.currency),
+      expense.currency,
+      expense.category,
+      expense.merchant ?? "",
+    ]),
+  ]);
 }
 
 /** Unclaimed, unarchived expenses — the candidates for a new claim. */
