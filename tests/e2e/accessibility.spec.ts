@@ -64,6 +64,18 @@ test.describe("signed in", () => {
     await expectNoViolations(page);
   });
 
+  test("finance page has no automatically detectable WCAG violations", async ({ page }) => {
+    await page.goto("/finance");
+    await expect(page.getByRole("heading", { name: "Finance" })).toBeVisible();
+    await expectNoViolations(page);
+  });
+
+  test("claims page has no automatically detectable WCAG violations", async ({ page }) => {
+    await page.goto("/finance/claims");
+    await expect(page.getByRole("heading", { name: "Reimbursement claims" })).toBeVisible();
+    await expectNoViolations(page);
+  });
+
   test("more page has no automatically detectable WCAG violations", async ({ page }) => {
     await page.goto("/more");
     await expect(page.getByRole("heading", { name: "More" })).toBeVisible();
