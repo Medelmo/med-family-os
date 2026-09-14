@@ -36,7 +36,10 @@
     "notifications": "Notifications",
     "unreadCount": "{count, plural, one {# unread} other {# unread}}",
     "cases": "Cases",
-    "calendar": "Calendar"
+    "calendar": "Calendar",
+    "more": "More",
+    "primary": "Primary",
+    "notificationsShort": "Alerts"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -210,5 +213,8 @@
     },
     "errorNotAuthorized": "You don't have permission to add events.",
     "errorInvalidInput": "Please check the form — something wasn't filled in correctly."
+  },
+  "more": {
+    "title": "More"
   }
 }

@@ -1070,7 +1070,7 @@ hour — the wall-clock design doing exactly its job.
   bar was the right call at two destinations and is the wrong one at
   eight: it now wraps onto multiple rows and eats real vertical space on a
   phone. This is the outstanding design-system debt and should be the
-  first item of the next UI-facing phase.
+  first item of the next UI-facing phase. **Resolved in Phase 4c below.**
 - **Notification preferences and quiet hours** (CLAUDE.md §16). Worth
   correcting an overstatement in the Phase 4a notes: with delivery
   currently in-app only, a notification created at 03:00 wakes nobody, so
@@ -1104,3 +1104,97 @@ real verification tool or risking an unreviewable destructive rewrite on
 an unversioned tree. `.gitignore` was already correct (verified `.env`,
 `node_modules`, and the dev-only Compose override are excluded before the
 first commit).
+
+---
+
+## Phase 4c: clearing the navigation debt, and the CI gate that was missing
+
+Two items are resolved here. Neither is a feature; both were named as debt
+earlier in this document, and both compound with every phase that adds a
+screen — which is why they were done before Phase 5 rather than after.
+
+### 1. The navigation did not scale (High, resolved)
+
+**Problem.** The shell had one wrapping row of links in the top bar. That
+was adequate at two destinations and wrong at eight: at 375px it first
+overflowed horizontally (taps landed on the wrong element, and seven
+mobile E2E tests timed out), and the `flex-wrap` stopgap then ate several
+rows of vertical space on the very viewport that has the least of it.
+Phase 5 would have added a ninth destination.
+
+**Resolution.** The shell now has two layouts, chosen by a CSS media query
+at 768px rather than by sniffing the user agent on the server, so a
+resized window stays correct:
+
+- **Desktop** — a 248px sidebar listing every destination.
+- **Phone** — a fixed 64px bottom bar with four destinations plus `More`,
+  clear of the home indicator via `env(safe-area-inset-bottom)`.
+
+The four are the ones that answer "what needs my attention?":
+Today, Inbox, Attention, Notifications. The reference views — Tasks,
+Cases, Calendar, Family — live on `/more`, a real page rather than a
+sheet, so it needs no JavaScript and can be linked.
+
+The split is declared once, in `components/app-shell/navItems.ts`. The
+sidebar, the bottom bar and `/more` all read it, so they cannot drift; a
+destination added by a later phase defaults to secondary and the bar does
+not grow.
+
+**Files:** `components/app-shell/navItems.ts` (new),
+`components/app-shell/Nav.tsx` (new), `components/app-shell/AppShell.tsx`,
+`components/app-shell/AppShell.module.css`, `app/(app)/more/page.tsx`
+(new), `messages/en.json`, `messages/de.json`,
+`docs/design/implementation-handoff.md`.
+
+**A second bug the rewrite exposed.** "Notifications" does not fit a
+75px bottom-bar slot. It wrapped to two lines and then clipped against
+the 64px bar — visible only by actually looking at a 375px viewport, since
+nothing overflowed horizontally and every automated check stayed green.
+The German "Mitteilungen" fails the same way. `NavItem.shortLabelKey` now
+supplies a deliberate short label for the bar ("Alerts" / "Meldungen");
+the visible text is the accessible name in both layouts, so WCAG 2.2
+SC 2.5.3 (Label in Name) holds either way.
+
+**Tests.** The keyboard-navigation accessibility test previously tabbed to
+"Family", which no longer exists in the phone layout — a test that would
+have failed for the right reason. It now targets Inbox, which is present
+in both layouts, and two new project-gated tests cover what the split
+actually promises: that the sidebar carries all eight destinations and
+marks the current one with `aria-current` (not colour alone), and that on
+a phone every secondary destination is still reachable *by keyboard*
+through `More`. The horizontal-overflow guard was extended to
+`/notifications` and `/more`. The suite: 221 unit/integration tests and 59
+E2E tests pass, 2 skipped by project gate.
+
+### 2. There was no CI (High, resolved)
+
+**Problem.** CLAUDE.md §17 lists "CI quality gates" as a Phase 1
+deliverable and §1.20 lists the gates themselves. Phase 0 recorded these
+as "CI-equivalent local quality gates" — which is a fair description of
+what existed, and not the same thing. Every gate ran only because I chose
+to run it. Nothing enforced them on a change, and nothing would have
+caught a contributor (or a future session) skipping one.
+
+**Resolution.** `.github/workflows/ci.yml` runs typecheck, lint,
+migrations, unit + integration tests, build, and the E2E/accessibility
+suite against a `postgres:18.6` service — the same image tag as
+`docker-compose.yml`, pinned because every primary key defaults to
+PostgreSQL 18's native `uuidv7()`. It uses Node 22 to match the
+Dockerfile's runtime image rather than the newer Node this was developed
+on, so a Node-24-only assumption would fail here rather than in
+production. The commands are the ones in `package.json`, in the order used
+locally, so a green local run and a green CI run mean the same thing. On
+failure the Playwright HTML report is uploaded.
+
+**Honest limitation:** the workflow's YAML structure is validated and each
+step's command was run locally in this order against a clean `.next`, but
+the workflow itself has not executed on a GitHub runner — this repository
+has no remote. The first push will be its real test. The most likely
+first failure is an environment difference (a Playwright system
+dependency, or the Postgres service's readiness window), not a logic
+error.
+
+**Still outstanding from the Phase 1 security baseline:** dependency and
+container scanning (CLAUDE.md §12). Adding a scanner is one more job in
+this file; it is deliberately not bundled into the same change as
+establishing the gate itself.

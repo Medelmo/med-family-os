@@ -36,7 +36,10 @@
     "notifications": "Mitteilungen",
     "unreadCount": "{count, plural, one {# ungelesen} other {# ungelesen}}",
     "cases": "Vorgänge",
-    "calendar": "Kalender"
+    "calendar": "Kalender",
+    "more": "Mehr",
+    "primary": "Hauptnavigation",
+    "notificationsShort": "Meldungen"
   },
   "home": {
     "greeting": "Hallo, {name}",
@@ -210,5 +213,8 @@
     },
     "errorNotAuthorized": "Sie haben keine Berechtigung, Termine hinzuzufügen.",
     "errorInvalidInput": "Bitte überprüfen Sie das Formular – etwas wurde nicht korrekt ausgefüllt."
+  },
+  "more": {
+    "title": "Mehr"
   }
 }

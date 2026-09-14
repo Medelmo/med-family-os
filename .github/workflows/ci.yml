@@ -1,0 +1,101 @@
+# CLAUDE.md §1.20: "After each phase: typecheck, lint, unit/integration
+# tests, E2E tests where applicable, accessibility checks, security
+# review, docs update." Everything in that list a machine can decide runs
+# here, in the same order and with the same commands used locally, so a
+# green local run and a green CI run mean the same thing.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch makes the first run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      # The same image tag as docker-compose.yml. Pinned deliberately:
+      # every table's primary key defaults to PostgreSQL 18's native
+      # uuidv7() (db/schema/*.ts), so a drifting `postgres:latest` could
+      # pass here and fail on the household's actual deployment, or the
+      # reverse.
+      postgres:
+        image: postgres:18.6
+        env:
+          POSTGRES_DB: medfamily
+          POSTGRES_USER: medfamily
+          POSTGRES_PASSWORD: ci-not-a-secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U medfamily -d medfamily"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgres://medfamily:ci-not-a-secret@localhost:5432/medfamily
+      # Throwaway, for a database that exists for the length of this job.
+      # Real deployments generate this per CLAUDE.md §12 and .env.example;
+      # no real secret is ever committed or needed to run these gates.
+      AUTH_SECRET: ci-only-auth-secret-not-used-anywhere-else
+      APP_URL: http://localhost:3000
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches the Dockerfile's runtime image, so CI exercises the
+          # Node major the household actually runs rather than whatever is
+          # newest.
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # `next-env.d.ts` points at generated route types. Generating them
+      # without a full build keeps the typecheck an early, fast gate.
+      - name: Typecheck
+        run: pnpm exec next typegen && pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Apply migrations
+        run: pnpm db:migrate
+
+      - name: Unit and integration tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Install Playwright browsers
+        # Both E2E projects are Chromium-based (Desktop Chrome and the
+        # Pixel 7 emulation), so the other engines are not downloaded.
+        run: pnpm exec playwright install --with-deps chromium
+
+      # Runs against the standalone bundle the Dockerfile ships — see
+      # scripts/serve-standalone.mjs. This is also where the axe-core
+      # accessibility checks live (tests/e2e/accessibility.spec.ts), which
+      # is why there is no separate accessibility job.
+      - name: End-to-end and accessibility tests
+        run: pnpm test:e2e
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

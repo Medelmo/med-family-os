@@ -15,6 +15,33 @@ Mobile:
 - drawers instead of side panels
 - sticky primary action where needed
 
+### Which destinations go where
+
+The sidebar carries every destination. The bottom bar carries four plus
+`More`, and that count is fixed — a bar that grows with the app is how the
+nav ended up overflowing a 375px viewport once there were eight links.
+
+The four are the ones that answer "what needs my attention?", which
+`docs/requirements/product-spec.md` names as the reason the app exists:
+**Today, Inbox, Attention, Notifications**. Everything else is a reference
+view you open when you already know what you are looking for, so it lives
+on `/more`: Tasks, Cases, Calendar, Family, and whatever later phases add.
+
+Rules that follow from this:
+
+- The split lives in `components/app-shell/navItems.ts` and nowhere else,
+  so the sidebar, the bottom bar and `/more` cannot disagree.
+- A new destination defaults to `primary: false`. Promoting one means
+  demoting another.
+- A bottom-bar label that does not fit one line at 375px gets an explicit
+  `shortLabelKey` rather than being left to wrap — "Notifications" and its
+  German "Mitteilungen" both wrapped and then clipped against the 64px
+  bar, so they render as "Alerts"/"Meldungen" there.
+- `/more` is a page, not a sheet: no JavaScript, linkable, and it survives
+  the layout being resized past the breakpoint.
+- Which layout applies is a CSS media query, never a server-side user-agent
+  guess, so resizing a window stays correct.
+
 ## Dashboard layout
 
 1. Header: greeting + global search + quick capture
