@@ -1,6 +1,8 @@
 {
   "common": {
-    "appName": "Med Family OS"
+    "appName": "Med Family OS",
+    "cancel": "Cancel",
+    "save": "Save"
   },
   "setup": {
     "title": "Set up your household",
@@ -26,6 +28,9 @@
   },
   "nav": {
     "today": "Today",
+    "inbox": "Inbox",
+    "attention": "Attention",
+    "tasks": "Tasks",
     "family": "Family",
     "signOut": "Sign out"
   },
@@ -43,5 +48,75 @@
     "temporaryPasswordLabel": "Temporary password",
     "errorNotAuthorized": "You don't have permission to add household members.",
     "errorInvalidInput": "Please check the form — something wasn't filled in correctly."
+  },
+  "inbox": {
+    "title": "Inbox",
+    "description": "Capture anything here. Decide what it is later.",
+    "captureLabel": "What's on your mind?",
+    "captureButton": "Capture",
+    "empty": "Inbox zero. Nothing is waiting to be sorted.",
+    "untriagedCount": "{count, plural, =0 {Nothing to triage} one {# item to triage} other {# items to triage}}",
+    "makeTask": "Make it a task",
+    "discard": "Discard",
+    "taskTitleLabel": "Task title",
+    "dueOnLabel": "Due date (optional)",
+    "nextActionLabel": "Next action (optional)",
+    "createTask": "Create task",
+    "errorConflict": "Someone else already handled this item. Reload to see the current inbox.",
+    "errorNotAuthorized": "You don't have permission to triage the inbox.",
+    "errorInvalidInput": "Please check the form — something wasn't filled in correctly."
+  },
+  "tasks": {
+    "title": "Tasks",
+    "empty": "No open tasks.",
+    "nextActionLabel": "Next action",
+    "waitingForLabel": "Waiting for",
+    "followUpLabel": "Follow up",
+    "dueLabel": "Due",
+    "ownerLabel": "Owner",
+    "noOwner": "Nobody",
+    "noNextAction": "No next action set",
+    "status": {
+      "INBOX": "Untriaged",
+      "PLANNED": "Planned",
+      "IN_PROGRESS": "In progress",
+      "WAITING": "Waiting",
+      "COMPLETED": "Completed",
+      "CANCELLED": "Cancelled"
+    },
+    "actions": {
+      "start": "Start",
+      "complete": "Complete",
+      "resume": "Resume",
+      "cancel": "Cancel task",
+      "reopen": "Reopen"
+    },
+    "errorIllegalTransition": "That isn't a valid next step for this task.",
+    "errorOwnerRequired": "A task in progress needs an owner. Assign one first.",
+    "errorFollowUpRequired": "A waiting task needs a follow-up date.",
+    "errorConflict": "This task was changed by someone else. Reload and try again.",
+    "errorNotAuthorized": "You don't have permission to change this task."
+  },
+  "today": {
+    "title": "Today",
+    "dueSection": "Due today or earlier",
+    "waitingSection": "Waiting on someone",
+    "deadlinesSection": "Deadlines reached",
+    "empty": "Nothing is due today. Nothing is overdue.",
+    "waitingSince": "Waiting since {date}"
+  },
+  "attention": {
+    "title": "Attention",
+    "description": "Everything the household rules flagged, with the reason it was flagged.",
+    "empty": "Nothing needs attention right now.",
+    "reasons": {
+      "OVERDUE": "{daysOverdue, plural, one {# day overdue} other {# days overdue}}",
+      "DUE_SOON": "{daysUntilDue, plural, =0 {Due today} one {Due tomorrow} other {Due in # days}}",
+      "FOLLOW_UP_DUE": "Follow-up date has arrived",
+      "WAITING_TOO_LONG": "Waiting {waitingDays, plural, one {# day} other {# days}} with no reply",
+      "WAITING_INDEFINITELY": "Waiting with no follow-up date",
+      "MISSING_NEXT_ACTION": "No next action decided",
+      "HIGH_PRIORITY": "Marked {priority}"
+    }
   }
 }

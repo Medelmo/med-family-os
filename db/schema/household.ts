@@ -6,6 +6,13 @@ import { roleEnum, membershipStatusEnum } from "./enums";
 export const households = pgTable("household", {
   id: uuid("id").primaryKey().default(sql`uuidv7()`),
   name: text("name").notNull(),
+  // CLAUDE.md §7: "explicit IANA timezone for household/calendar
+  // interpretation... Never infer a timezone from the browser for stored
+  // domain meaning." This is what makes "today" well-defined for the Today
+  // and Attention projections. Defaults to UTC rather than guessing a
+  // region; a Settings control to change it belongs with the calendar work
+  // in Phase 4.
+  timezone: text("timezone").notNull().default("UTC"),
   createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
 });

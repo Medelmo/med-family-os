@@ -702,6 +702,146 @@ verification, which remains the primary control).
 - `docs/architecture/deployment-feasibility.md`'s host-facts gap (§17) —
   still open, still requires the user's own environment access.
 
+---
+
+## Phase 2 — Attention engine (implemented)
+
+Vertical slice 2 from `docs/implementation/implementation-plan.md`:
+**Inbox -> task -> deadline -> today -> attention**.
+
+### What was built
+
+- **Domain** (pure, no I/O, exhaustively unit-tested):
+  - `domain/tasks/task.ts` — the task state machine as a pure
+    `applyTaskCommand(task, command, now)` returning either a patch plus an
+    audit action, or a typed rejection. It implements exactly the
+    transitions `docs/domain/state-machines.md` sanctions, plus
+    `COMPLETED -> PLANNED` which that document *implies* rather than lists
+    ("Reopening a completed task creates an audit event" is impossible
+    unless reopening is a transition).
+  - `domain/attention/rules.ts` — deterministic, explainable attention
+    rules. Every surfaced item carries the reasons that surfaced it; the
+    score only orders the list and is never shown, per
+    `docs/requirements/product-spec.md`'s "Never show an opaque AI score as
+    the primary attention mechanism."
+- **Schema**: `inbox_item`, `task`, `task_person`, `deadline`, plus
+  `household.timezone`. Migration `0001` generated and applied.
+- **Application**: capture / triage-to-task / discard, `transitionTask`
+  (authorization + optimistic concurrency + audit around the pure domain
+  decision), `getInbox`, `getTasks`, `getAttention`, `getToday`,
+  `application/time.ts` (household-timezone "today"),
+  `application/policies/task.ts`.
+- **UI**: `/inbox` (capture + triage), `/tasks`, `/today`, `/attention`,
+  nav updated, full German/English copy including ICU plurals for the
+  attention explanations.
+
+### Product decisions taken here
+
+- **Inbox is its own aggregate, not a task status.** `product-spec.md`
+  journey 1 is "record something quickly without deciding its final
+  structure", and CLAUDE.md §4.1 lists eight possible classification
+  targets. A capture therefore has its own lifecycle and its own
+  provenance (what it became) — neither of which belongs on the Task it
+  might turn into. Added to `docs/domain/domain-model.md`'s aggregate set
+  by implication; `triagedIntoType` is a plain string so the remaining
+  targets can arrive with the aggregates they point at instead of forcing
+  a migration per phase.
+- **Deadline stays separate from `task.dueOn`.** A deadline is a date the
+  household is committed to whether or not anyone has created work for it.
+  Collapsing them would mean every commitment had to be phrased as a task
+  before it could be tracked, which is how commitments get missed.
+- **Landing page is `/today`, and the placeholder Dashboard was deleted.**
+  `docs/design/screen-inventory.md` lists both, but its Dashboard
+  (attention strip, deadlines, family events, trips, recent activity) is
+  a summary of aggregates that mostly do not exist yet. A near-empty
+  overview that nothing linked to was dead weight; Today answers the
+  product's actual question today.
+- **`WAITING -> COMPLETED` is deliberately not implemented**, because the
+  domain doc does not sanction it — the documented path out of WAITING is
+  back through IN_PROGRESS. This is friction a product owner may well want
+  removed (a task waiting on a third party often just *resolves*), so it
+  is flagged below as an open question rather than silently "fixed".
+
+### Second critical production-only bug, found the same way
+
+Browser-testing the new interactive UI surfaced a bug with the same shape
+as the `trustHost` one, and again invisible to typecheck, lint and 88
+unit/integration tests:
+
+**The Content-Security-Policy added in Phase 1 (`script-src 'self'`) was
+blocking Next.js's own inline RSC hydration scripts, so React never
+hydrated.** Phase 1 did not catch it because every Phase 1 form degrades
+gracefully without JavaScript — they post natively and worked perfectly.
+Phase 2's first genuinely client-side control (the triage form's expand
+toggle) simply did nothing.
+
+Worse, the Phase 1 code carried a comment *asserting* this was safe
+("Next.js App Router doesn't need inline scripts for its own hydration").
+That assertion was wrong. It is now replaced with a nonce-based CSP
+(`'nonce-…' 'strict-dynamic'`, with `'unsafe-eval'` added **only** when
+`NODE_ENV !== "production"` for Next's dev-mode HMR), the nonce forwarded
+on the request header so Next stamps it onto its own script tags.
+Verified by reading the served header in both modes: production emits
+nonce + `strict-dynamic` and no `unsafe-eval`.
+
+The lesson is the one already recorded against ADR-006: a confident
+comment is not verification. Both of this project's two most serious bugs
+so far were *production-only*, and both were found only by running the
+real artifact in a real browser.
+
+### Test-suite bugs fixed (worth distinguishing from product bugs)
+
+Four failures during this phase were defects in the tests, not the app,
+and are recorded so they are not mistaken for product behaviour later:
+- Two Vitest integration files truncating one shared database in parallel
+  deadlocked each other — split into separate Vitest projects so
+  integration runs serially (`singleFork`) while unit tests stay parallel.
+- `overrides.nextAction ?? default` in a test helper silently replaced the
+  explicit `null` the test existed to pass.
+- `getByRole("alert")` and `getByRole("heading", {name: "Today"})` both
+  became ambiguous once hydration worked and a section heading appeared —
+  the selectors, not the markup, were wrong.
+- The E2E suite tripped its own sign-in rate limiter again, because
+  `globalSetup` truncated the domain tables but not the limiter's own
+  table (which `rate-limiter-flexible` owns, outside the Drizzle schema),
+  so attempts accumulated across runs inside the 15-minute window.
+
+### Verification performed
+
+- `pnpm typecheck`, `pnpm lint` — clean.
+- `pnpm test` — **88 passing** (48 domain unit tests covering every legal
+  and illegal task transition and every attention rule, plus 18
+  integration tests running the real Capture → Triage → Execute → Complete
+  loop against PostgreSQL, including optimistic-concurrency conflicts and
+  person-scoped authorization).
+- `pnpm test:e2e` — **27 passing** across desktop and mobile against the
+  production standalone artifact, including the full capture-to-attention
+  journey and zero automatically detectable WCAG 2.2 AA violations.
+- Manual browser walkthrough: captured an item, triaged it into a task
+  with a past due date, watched it appear on Today and on Attention
+  labelled "13 days overdue", started it (owner auto-assigned, satisfying
+  the IN_PROGRESS-requires-owner invariant), completed it, and confirmed
+  it left both projections.
+
+### Open question for the product owner
+
+Should `WAITING -> COMPLETED` (and `WAITING -> CANCELLED`) be allowed
+directly? The domain doc currently routes both through IN_PROGRESS. The
+strict reading is implemented; loosening it is a one-line change to
+`ALLOWED_TRANSITIONS` plus a state-machines.md update, but it is a product
+decision, not an engineering one.
+
+### Not yet done in Phase 2
+
+`reminders/outbox` (CLAUDE.md §17's third Phase 2 item) is not
+implemented. ADR-004's transactional outbox is still the right design, but
+it needs a delivery target to be meaningful, and the natural first one —
+in-app notifications — is a subsystem of its own (CLAUDE.md §16:
+preferences, deduplication, quiet hours, escalation). It is the next
+increment rather than a forgotten one.
+
+---
+
 ### Git
 
 This repository had no version control (`git init` had never been run).

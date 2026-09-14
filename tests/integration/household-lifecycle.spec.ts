@@ -1,7 +1,18 @@
 import { sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { db } from "../../infrastructure/db/client";
-import { auditEvents, households, householdMemberships, people, sessionRevocations, users } from "../../db/schema";
+import {
+  auditEvents,
+  deadlines,
+  households,
+  householdMemberships,
+  inboxItems,
+  people,
+  sessionRevocations,
+  taskPeople,
+  tasks,
+  users,
+} from "../../db/schema";
 import { bootstrapHousehold, BootstrapNotAllowedError } from "../../application/commands/household/bootstrapHousehold";
 import { addHouseholdMember } from "../../application/commands/household/addHouseholdMember";
 import { getHouseholdMembers } from "../../application/queries/household/getHouseholdMembers";
@@ -21,7 +32,7 @@ import { AuthorizationError } from "../../application/errors";
 
 async function resetDatabase() {
   await db.execute(
-    sql`truncate table ${auditEvents}, ${people}, ${householdMemberships}, ${households}, ${sessionRevocations}, ${users} cascade`
+    sql`truncate table ${auditEvents}, ${deadlines}, ${taskPeople}, ${tasks}, ${inboxItems}, ${people}, ${householdMemberships}, ${households}, ${sessionRevocations}, ${users} cascade`
   );
 }
 

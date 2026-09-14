@@ -1,0 +1,87 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-line);
+}
+
+.status {
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+  font-weight: 600;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.status[data-status="IN_PROGRESS"] {
+  color: var(--color-info);
+  background: var(--color-info-surface);
+  border-color: transparent;
+}
+
+.status[data-status="WAITING"] {
+  color: var(--color-warning);
+  background: var(--color-warning-surface);
+  border-color: transparent;
+}
+
+.status[data-status="COMPLETED"] {
+  color: var(--color-success);
+  background: var(--color-success-surface);
+  border-color: transparent;
+}
+
+.meta {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+}
+
+.metaRow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.metaRow dt {
+  color: var(--color-text-secondary);
+  min-width: 96px;
+}
+
+.metaRow dd {
+  margin: 0;
+}
+
+.missing {
+  color: var(--color-warning);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.error {
+  margin: 0;
+  color: var(--color-critical);
+  font-size: var(--text-compact-size);
+}

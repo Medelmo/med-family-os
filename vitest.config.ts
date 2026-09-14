@@ -15,15 +15,36 @@ if (existsSync(".env")) {
   process.loadEnvFile(".env");
 }
 
+const alias = { "@": path.resolve(__dirname, ".") };
+
 export default defineConfig({
   test: {
-    environment: "node",
-    include: ["tests/unit/**/*.spec.ts", "tests/integration/**/*.spec.ts", "tests/security/**/*.spec.ts"],
-    exclude: ["tests/e2e/**", "node_modules/**"],
-  },
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "."),
-    },
+    projects: [
+      {
+        resolve: { alias },
+        test: {
+          name: "unit",
+          environment: "node",
+          include: ["tests/unit/**/*.spec.ts", "tests/security/**/*.spec.ts"],
+        },
+      },
+      {
+        resolve: { alias },
+        test: {
+          name: "integration",
+          environment: "node",
+          include: ["tests/integration/**/*.spec.ts"],
+          // Every integration file truncates the same development database
+          // between cases, so running two of them at once deadlocks on the
+          // TRUNCATE and fails with foreign-key violations from the other
+          // file's half-built fixtures. One fork keeps them serial.
+          // Separating the projects means the pure unit tests still run in
+          // parallel rather than paying for a constraint that is only the
+          // database's.
+          pool: "forks",
+          poolOptions: { forks: { singleFork: true } },
+        },
+      },
+    ],
   },
 });

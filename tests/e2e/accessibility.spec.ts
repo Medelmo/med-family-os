@@ -25,9 +25,9 @@ test.describe("signed out", () => {
 });
 
 test.describe("signed in", () => {
-  test("dashboard has no automatically detectable WCAG violations", async ({ page }) => {
-    await page.goto("/dashboard");
-    await expect(page.getByRole("heading", { name: /^Hello,/ })).toBeVisible();
+  test("today has no automatically detectable WCAG violations", async ({ page }) => {
+    await page.goto("/today");
+    await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
     await expectNoViolations(page);
   });
 
@@ -38,8 +38,8 @@ test.describe("signed in", () => {
   });
 
   test("primary navigation is reachable and operable by keyboard alone", async ({ page }) => {
-    await page.goto("/dashboard");
-    await expect(page.getByRole("heading", { name: /^Hello,/ })).toBeVisible();
+    await page.goto("/today");
+    await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
 
     // Tab until the Family link takes focus, then activate it with the
     // keyboard only — no clicks (docs/qa/acceptance.md "keyboard-only

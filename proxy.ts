@@ -26,38 +26,68 @@ export default auth((req) => {
   // Handlers can read it and build a child logger
   // (infrastructure/logging/logger.ts) without re-deriving an ID.
   const requestId = crypto.randomUUID();
+  const nonce = crypto.randomUUID();
+  const csp = contentSecurityPolicy(nonce);
+
   const forwardedHeaders = new Headers(req.headers);
   forwardedHeaders.set("x-request-id", requestId);
+  // Next.js reads the nonce out of the request's own CSP header and stamps
+  // it onto the script tags it emits. Without this the policy below would
+  // block Next's inline RSC payload scripts and the app would render but
+  // never hydrate.
+  forwardedHeaders.set("Content-Security-Policy", csp);
 
   const response = NextResponse.next({ request: { headers: forwardedHeaders } });
   response.headers.set("x-request-id", requestId);
-  applySecurityHeaders(response.headers);
+  applySecurityHeaders(response.headers, csp);
   return response;
 });
 
-function applySecurityHeaders(headers: Headers): void {
+/**
+ * Nonce-based CSP.
+ *
+ * A plain `script-src 'self'` looks stricter but silently breaks the app:
+ * Next.js App Router emits its RSC payload as inline `self.__next_f.push(...)`
+ * scripts, so blocking inline scripts blocks hydration — every client
+ * component stops responding while the server-rendered HTML still looks
+ * perfectly fine. Found exactly that way: the page rendered, and nothing
+ * that needed JavaScript worked.
+ *
+ * 'strict-dynamic' lets the nonced Next bootstrap load its own chunks
+ * without enumerating them, which is the current recommended shape for a
+ * strict CSP.
+ */
+function contentSecurityPolicy(nonce: string): string {
+  const scriptSrc = [`'self'`, `'nonce-${nonce}'`, `'strict-dynamic'`];
+
+  // Next's dev server compiles with eval for hot reloading. Production
+  // never gets this relaxation.
+  if (process.env.NODE_ENV !== "production") {
+    scriptSrc.push(`'unsafe-eval'`);
+  }
+
+  return [
+    "default-src 'self'",
+    `script-src ${scriptSrc.join(" ")}`,
+    // Styles stay 'unsafe-inline': Next injects inline <style> for CSS
+    // Modules, and style injection is not an script-execution vector.
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "font-src 'self'",
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+  ].join("; ");
+}
+
+function applySecurityHeaders(headers: Headers, csp: string): void {
   headers.set("X-Frame-Options", "DENY");
   headers.set("X-Content-Type-Options", "nosniff");
   headers.set("Referrer-Policy", "same-origin");
   headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-  // 'unsafe-inline' on style-src only (not script-src): Next.js App Router
-  // doesn't need inline scripts for its own hydration (__NEXT_DATA__ is
-  // type="application/json", not executed), but some inline styles are
-  // still common. Revisit with nonces if a future integration needs
-  // inline script execution.
-  headers.set(
-    "Content-Security-Policy",
-    [
-      "default-src 'self'",
-      "script-src 'self'",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data:",
-      "connect-src 'self'",
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-    ].join("; ")
-  );
+  headers.set("Content-Security-Policy", csp);
 }
 
 export const config = {

@@ -1,6 +1,8 @@
 {
   "common": {
-    "appName": "Med Family OS"
+    "appName": "Med Family OS",
+    "cancel": "Abbrechen",
+    "save": "Speichern"
   },
   "setup": {
     "title": "Haushalt einrichten",
@@ -26,6 +28,9 @@
   },
   "nav": {
     "today": "Heute",
+    "inbox": "Eingang",
+    "attention": "Wichtig",
+    "tasks": "Aufgaben",
     "family": "Familie",
     "signOut": "Abmelden"
   },
@@ -43,5 +48,75 @@
     "temporaryPasswordLabel": "Vorläufiges Passwort",
     "errorNotAuthorized": "Sie haben keine Berechtigung, Haushaltsmitglieder hinzuzufügen.",
     "errorInvalidInput": "Bitte überprüfen Sie das Formular – etwas wurde nicht korrekt ausgefüllt."
+  },
+  "inbox": {
+    "title": "Eingang",
+    "description": "Halten Sie hier alles fest. Was daraus wird, entscheiden Sie später.",
+    "captureLabel": "Was liegt an?",
+    "captureButton": "Festhalten",
+    "empty": "Der Eingang ist leer. Nichts wartet auf Einordnung.",
+    "untriagedCount": "{count, plural, =0 {Nichts einzuordnen} one {# Eintrag einzuordnen} other {# Einträge einzuordnen}}",
+    "makeTask": "Zur Aufgabe machen",
+    "discard": "Verwerfen",
+    "taskTitleLabel": "Titel der Aufgabe",
+    "dueOnLabel": "Fällig am (optional)",
+    "nextActionLabel": "Nächster Schritt (optional)",
+    "createTask": "Aufgabe erstellen",
+    "errorConflict": "Jemand anderes hat diesen Eintrag bereits bearbeitet. Bitte neu laden.",
+    "errorNotAuthorized": "Sie haben keine Berechtigung, den Eingang einzuordnen.",
+    "errorInvalidInput": "Bitte überprüfen Sie das Formular – etwas wurde nicht korrekt ausgefüllt."
+  },
+  "tasks": {
+    "title": "Aufgaben",
+    "empty": "Keine offenen Aufgaben.",
+    "nextActionLabel": "Nächster Schritt",
+    "waitingForLabel": "Warten auf",
+    "followUpLabel": "Nachfassen",
+    "dueLabel": "Fällig",
+    "ownerLabel": "Zuständig",
+    "noOwner": "Niemand",
+    "noNextAction": "Kein nächster Schritt festgelegt",
+    "status": {
+      "INBOX": "Nicht eingeordnet",
+      "PLANNED": "Geplant",
+      "IN_PROGRESS": "In Arbeit",
+      "WAITING": "Wartet",
+      "COMPLETED": "Erledigt",
+      "CANCELLED": "Abgebrochen"
+    },
+    "actions": {
+      "start": "Beginnen",
+      "complete": "Erledigen",
+      "resume": "Fortsetzen",
+      "cancel": "Aufgabe abbrechen",
+      "reopen": "Wieder öffnen"
+    },
+    "errorIllegalTransition": "Das ist kein gültiger nächster Schritt für diese Aufgabe.",
+    "errorOwnerRequired": "Eine Aufgabe in Arbeit braucht eine zuständige Person. Bitte zuerst zuweisen.",
+    "errorFollowUpRequired": "Eine wartende Aufgabe braucht ein Datum zum Nachfassen.",
+    "errorConflict": "Diese Aufgabe wurde zwischenzeitlich geändert. Bitte neu laden.",
+    "errorNotAuthorized": "Sie haben keine Berechtigung, diese Aufgabe zu ändern."
+  },
+  "today": {
+    "title": "Heute",
+    "dueSection": "Heute oder früher fällig",
+    "waitingSection": "Warten auf andere",
+    "deadlinesSection": "Erreichte Fristen",
+    "empty": "Heute ist nichts fällig. Nichts ist überfällig.",
+    "waitingSince": "Wartet seit {date}"
+  },
+  "attention": {
+    "title": "Wichtig",
+    "description": "Alles, was die Haushaltsregeln markiert haben – mit dem Grund dafür.",
+    "empty": "Im Moment ist nichts dringend.",
+    "reasons": {
+      "OVERDUE": "{daysOverdue, plural, one {# Tag überfällig} other {# Tage überfällig}}",
+      "DUE_SOON": "{daysUntilDue, plural, =0 {Heute fällig} one {Morgen fällig} other {In # Tagen fällig}}",
+      "FOLLOW_UP_DUE": "Datum zum Nachfassen ist erreicht",
+      "WAITING_TOO_LONG": "Wartet seit {waitingDays, plural, one {# Tag} other {# Tagen}} ohne Antwort",
+      "WAITING_INDEFINITELY": "Wartet ohne Datum zum Nachfassen",
+      "MISSING_NEXT_ACTION": "Kein nächster Schritt festgelegt",
+      "HIGH_PRIORITY": "Markiert als {priority}"
+    }
   }
 }

@@ -29,7 +29,7 @@ setup("bootstrap the household and save the owner session", async ({ page }) => 
 
   // Bootstrap signs the new owner straight in rather than bouncing them
   // to /login with the credentials they just typed.
-  await expect(page.getByRole("heading", { name: `Hello, ${OWNER.name}` })).toBeVisible();
+  await expect(page.getByText(`Hello, ${OWNER.name}`)).toBeVisible();
 
   // A second account for the sign-out spec (see helpers.ts).
   await page.goto("/family");

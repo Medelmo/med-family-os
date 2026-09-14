@@ -10,10 +10,10 @@ import { OWNER, SECOND_MEMBER, SIGNED_OUT_STATE } from "./helpers";
 // where a spec is specifically about an auth transition.
 
 test.describe("as a signed-in owner", () => {
-  test("sees their household on the dashboard", async ({ page }) => {
-    await page.goto("/dashboard");
-    await expect(page.getByRole("heading", { name: `Hello, ${OWNER.name}` })).toBeVisible();
-    await expect(page.getByText(/household member/)).toBeVisible();
+  test("sees Today after signing in", async ({ page }) => {
+    await page.goto("/today");
+    await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
+    await expect(page.getByText(`Hello, ${OWNER.name}`)).toBeVisible();
   });
 
   test("cannot reach setup again once the household exists (ADR-012)", async ({ page }) => {
@@ -40,7 +40,7 @@ test.describe("signed out", () => {
   test.use({ storageState: SIGNED_OUT_STATE });
 
   test("cannot reach a protected route", async ({ page }) => {
-    await page.goto("/dashboard");
+    await page.goto("/today");
     await expect(page).toHaveURL(/\/login/);
     await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   });
@@ -51,14 +51,16 @@ test.describe("signed out", () => {
     await page.getByLabel("Password").fill("definitely not the password");
     await page.getByRole("button", { name: "Sign in" }).click();
 
-    const error = page.getByRole("alert");
-    await expect(error).toBeVisible();
+    // Scoped by text as well as role: Next.js ships its own
+    // `<div role="alert">` route announcer, so a bare getByRole("alert")
+    // matches two elements once the page is hydrated.
     // docs/security/threat-model.md: the message must not distinguish
     // "no such account" from "wrong password".
-    await expect(error).toHaveText("Incorrect email or password.");
+    const error = page.getByRole("alert").filter({ hasText: "Incorrect email or password." });
+    await expect(error).toBeVisible();
   });
 
-  test("signing out revokes the session and protects the dashboard again", async ({ page }) => {
+  test("signing out revokes the session and protects the app again", async ({ page }) => {
     // Uses the secondary account, not the shared owner session: sign-out
     // revokes the session row server-side (ADR-006), which would
     // invalidate the storage state every other spec depends on.
@@ -66,12 +68,12 @@ test.describe("signed out", () => {
     await page.getByLabel("Email").fill(SECOND_MEMBER.email);
     await page.getByLabel("Password").fill(SECOND_MEMBER.password);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page.getByRole("heading", { name: `Hello, ${SECOND_MEMBER.name}` })).toBeVisible();
+    await expect(page.getByText(`Hello, ${SECOND_MEMBER.name}`)).toBeVisible();
 
     await page.getByRole("button", { name: "Sign out" }).click();
     await expect(page).toHaveURL(/\/login/);
 
-    await page.goto("/dashboard");
+    await page.goto("/today");
     await expect(page).toHaveURL(/\/login/);
   });
 });
