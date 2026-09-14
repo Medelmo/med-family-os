@@ -28,6 +28,27 @@ export const inboxItemStatusEnum = pgEnum("inbox_item_status", ["UNTRIAGED", "TR
 // inspection rather than looping forever (ADR-013).
 export const outboxStatusEnum = pgEnum("outbox_status", ["PENDING", "PROCESSED", "FAILED"]);
 
+// Mirrors domain/integrations/syncRun.ts. PARTIAL is the interesting one:
+// a run that imported eleven documents and choked on the twelfth has done
+// real work and has also not finished.
+export const syncRunStatusEnum = pgEnum("sync_run_status", [
+  "PENDING",
+  "RUNNING",
+  "SUCCEEDED",
+  "PARTIAL",
+  "FAILED",
+  "RETRYING",
+]);
+
+// Which external systems a connection can be configured for. Kept
+// separate from document_provider: a connection can exist for a system
+// that does not produce document references.
+export const integrationProviderEnum = pgEnum("integration_provider", ["PAPERLESS", "NEXTCLOUD", "CALDAV"]);
+
+// Mirrors DOCUMENT_PROVIDERS in domain/documents/documentReference.ts.
+// MANUAL is a reference somebody typed in, with no connection behind it.
+export const documentProviderEnum = pgEnum("document_provider", ["PAPERLESS", "NEXTCLOUD", "MANUAL"]);
+
 // Mirrors ASSET_CATEGORIES in domain/assets/asset.ts. MEDICAL and
 // MOBILITY are not just labels: the command raises those assets to
 // SENSITIVE, because a wheelchair in the list says something about a

@@ -70,6 +70,12 @@
     they are the only thing on a trip that cannot be fixed the night
     before. An answer always shows who gave it and when (ADR-016).
 
+### Documents
+
+29 is now built as `/documents`: pointers to paperwork that lives in
+Paperless or Nextcloud, never a viewer. CLAUDE.md §13 — do not recreate
+Paperless.
+
 ## Assets
 41. Assets — `/assets`. Built. Each card says the two things that matter
     from a list: when the next service is due, and whether it is still
@@ -81,8 +87,13 @@
 44. Maintenance — part of 42, as an append-only history (ADR-017).
 
 ## Integration/Admin
-45. Integrations — not built (provider adapters, Phase 7 remainder).
-46. Sync health — not built; waits on 45.
+45. Integrations — `/settings/integrations`, reached from `/settings`.
+    Built. Owner/admin only, and a member without that role is told so
+    rather than shown an empty page.
+46. Sync health — part of 45: the last few runs per connection, each with
+    its outcome in words and the counts it achieved. Answered from
+    persisted runs rather than from whoever happened to be watching
+    (ADR-020).
 47. Home Assistant view — `/ha`, plus `GET /api/ha/summary`. Built, and
     deliberately outside the app shell and outside the navigation: it is a
     target for a dashboard embed, not a destination people browse to. It

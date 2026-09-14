@@ -64,6 +64,13 @@
       "when": 1789386090251,
       "tag": "0008_bitter_amazoness",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789412331771,
+      "tag": "0009_eminent_magus",
+      "breakpoints": true
     }
   ]
 }

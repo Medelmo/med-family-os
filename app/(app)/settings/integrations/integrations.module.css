@@ -1,0 +1,191 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 720px;
+}
+
+.title {
+  font-size: var(--text-h1-size);
+  line-height: var(--text-h1-line);
+  margin: 0 0 var(--space-2);
+}
+
+.subtitle {
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-line);
+  margin: 0 0 var(--space-4);
+}
+
+.sectionHeading {
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-line);
+  margin: var(--space-3) 0 var(--space-2);
+}
+
+.description {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.itemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.itemTitle {
+  margin: 0;
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-line);
+}
+
+/* Enabled/disabled and every run status say what they are in words; the
+   colour only reinforces it (CLAUDE.md §13). */
+.state,
+.runStatus {
+  display: inline-block;
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+  font-weight: 600;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.state[data-enabled="true"],
+.runStatus[data-status="SUCCEEDED"] {
+  color: var(--color-success);
+  background: var(--color-success-surface);
+  border-color: transparent;
+}
+
+.runStatus[data-status="PARTIAL"] {
+  color: var(--color-warning);
+  background: var(--color-warning-surface);
+  border-color: transparent;
+}
+
+.runStatus[data-status="FAILED"] {
+  color: var(--color-critical);
+  background: var(--color-critical-surface);
+  border-color: transparent;
+}
+
+.runStatus[data-status="RUNNING"],
+.runStatus[data-status="RETRYING"] {
+  color: var(--color-info);
+  background: var(--color-info-surface);
+  border-color: transparent;
+}
+
+.meta {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+  overflow-wrap: anywhere;
+}
+
+.notice {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-surface);
+  color: var(--color-warning);
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+}
+
+.runs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.run {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.runError {
+  color: var(--color-critical);
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  align-items: flex-start;
+  margin-top: var(--space-3);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-3);
+}
+
+.inlineForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.details {
+  margin-top: var(--space-3);
+}
+
+.details summary {
+  cursor: pointer;
+  font-weight: 600;
+  /* A comfortable target, per WCAG 2.2 SC 2.5.8. */
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.result {
+  margin: 0;
+  color: var(--color-success);
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+}
+
+.empty {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.error {
+  margin: 0 0 var(--space-3);
+  color: var(--color-critical);
+  font-size: var(--text-compact-size);
+}

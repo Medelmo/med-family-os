@@ -42,7 +42,9 @@
     "notificationsShort": "Alerts",
     "finance": "Finance",
     "trips": "Trips",
-    "assets": "Assets"
+    "assets": "Assets",
+    "documents": "Documents",
+    "settings": "Settings"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -516,5 +518,69 @@
     "none": "None",
     "asOf": "As of {time}",
     "openApp": "Open the app"
+  },
+  "integrations": {
+    "title": "Integrations",
+    "description": "Connections to the systems that already hold the household's things.",
+    "empty": "Nothing connected yet.",
+    "ownersOnly": "Only an owner or an admin can see and change integrations.",
+    "connect": "Connect a system",
+    "providerLabel": "Which system?",
+    "providerHint": "Only Paperless-ngx can sync so far; the others can be configured but not yet read.",
+    "displayNameLabel": "What should it be called here?",
+    "baseUrlLabel": "Address",
+    "baseUrlHint": "The full http:// or https:// address, on the household's own network.",
+    "tokenLabel": "API token",
+    "tokenHint": "Stored encrypted. It is never shown again, and never written to a log.",
+    "keyringMissing": "Set CREDENTIAL_KEYS and CREDENTIAL_ACTIVE_KEY before connecting a system. Until then a token cannot be stored safely, so connecting is disabled.",
+    "stateEnabled": "On",
+    "stateDisabled": "Off",
+    "enable": "Switch on",
+    "disable": "Switch off",
+    "recentRuns": "Recent syncs",
+    "neverRun": "Never synced.",
+    "runCounts": "{imported} imported, {skipped} skipped",
+    "syncNow": "Sync now",
+    "syncing": "Syncing…",
+    "syncResult": "Done: {imported} imported, {skipped} unchanged or skipped.",
+    "replaceToken": "Replace the token",
+    "replaceTokenHint": "Use this if the token has changed or you think it has leaked. Nothing else is altered.",
+    "newTokenLabel": "New API token",
+    "newTokenHint": "Sealed under the current encryption key.",
+    "errorConflict": "This was changed by someone else. Reload and try again.",
+    "errorNotAuthorized": "Only an owner or admin may do that.",
+    "errorInvalidInput": "Check the details and try again.",
+    "errorKeyringUnavailable": "No encryption key is configured, so a token cannot be stored safely.",
+    "errorDisabled": "This integration is switched off.",
+    "errorNoAdapter": "There is no adapter for that system yet.",
+    "errorNoCredential": "This integration has no stored token.",
+    "runStatus": {
+      "PENDING": "Queued",
+      "RUNNING": "Running",
+      "SUCCEEDED": "Succeeded",
+      "PARTIAL": "Partly done",
+      "FAILED": "Failed",
+      "RETRYING": "Retrying"
+    }
+  },
+  "documents": {
+    "title": "Documents",
+    "description": "Pointers to paperwork that lives in Paperless or Nextcloud. The document itself stays there.",
+    "empty": "No documents yet.",
+    "connectPaperless": "Connect Paperless to bring them in",
+    "noDate": "No date",
+    "opensElsewhere": "Opens in the other system",
+    "provider": {
+      "PAPERLESS": "Paperless",
+      "NEXTCLOUD": "Nextcloud",
+      "MANUAL": "Added by hand"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "How this household's copy of the app is configured.",
+    "integrations": "Integrations",
+    "integrationsHint": "Connections to Paperless, Nextcloud and the rest.",
+    "nothingForYou": "There is nothing here for your role yet."
   }
 }

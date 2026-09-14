@@ -42,7 +42,9 @@
     "notificationsShort": "Meldungen",
     "finance": "Finanzen",
     "trips": "Reisen",
-    "assets": "Besitz"
+    "assets": "Besitz",
+    "documents": "Dokumente",
+    "settings": "Einstellungen"
   },
   "home": {
     "greeting": "Hallo, {name}",
@@ -516,5 +518,69 @@
     "none": "Keine",
     "asOf": "Stand {time}",
     "openApp": "App öffnen"
+  },
+  "integrations": {
+    "title": "Integrationen",
+    "description": "Verbindungen zu den Systemen, in denen die Dinge des Haushalts bereits liegen.",
+    "empty": "Noch nichts verbunden.",
+    "ownersOnly": "Nur Eigentümer oder Administratoren sehen und ändern Integrationen.",
+    "connect": "System verbinden",
+    "providerLabel": "Welches System?",
+    "providerHint": "Bisher kann nur Paperless-ngx synchronisieren; die anderen lassen sich einrichten, aber noch nicht lesen.",
+    "displayNameLabel": "Wie soll es hier heißen?",
+    "baseUrlLabel": "Adresse",
+    "baseUrlHint": "Die vollständige http:// oder https:// Adresse im eigenen Netz.",
+    "tokenLabel": "API-Token",
+    "tokenHint": "Wird verschlüsselt gespeichert, nie wieder angezeigt und nie protokolliert.",
+    "keyringMissing": "Bitte CREDENTIAL_KEYS und CREDENTIAL_ACTIVE_KEY setzen, bevor ein System verbunden wird. Bis dahin lässt sich kein Token sicher speichern, deshalb ist das Verbinden deaktiviert.",
+    "stateEnabled": "An",
+    "stateDisabled": "Aus",
+    "enable": "Einschalten",
+    "disable": "Ausschalten",
+    "recentRuns": "Letzte Synchronisationen",
+    "neverRun": "Noch nie synchronisiert.",
+    "runCounts": "{imported} übernommen, {skipped} übersprungen",
+    "syncNow": "Jetzt synchronisieren",
+    "syncing": "Läuft…",
+    "syncResult": "Fertig: {imported} übernommen, {skipped} unverändert oder übersprungen.",
+    "replaceToken": "Token ersetzen",
+    "replaceTokenHint": "Dafür, wenn sich das Token geändert hat oder du einen Missbrauch vermutest. Sonst ändert sich nichts.",
+    "newTokenLabel": "Neues API-Token",
+    "newTokenHint": "Wird mit dem aktuellen Schlüssel versiegelt.",
+    "errorConflict": "Das wurde zwischenzeitlich geändert. Bitte neu laden und erneut versuchen.",
+    "errorNotAuthorized": "Das dürfen nur Eigentümer oder Administratoren.",
+    "errorInvalidInput": "Bitte die Angaben prüfen und erneut versuchen.",
+    "errorKeyringUnavailable": "Es ist kein Schlüssel konfiguriert, deshalb lässt sich kein Token sicher speichern.",
+    "errorDisabled": "Diese Integration ist ausgeschaltet.",
+    "errorNoAdapter": "Für dieses System gibt es noch keinen Adapter.",
+    "errorNoCredential": "Für diese Integration ist kein Token hinterlegt.",
+    "runStatus": {
+      "PENDING": "Wartet",
+      "RUNNING": "Läuft",
+      "SUCCEEDED": "Erfolgreich",
+      "PARTIAL": "Teilweise erledigt",
+      "FAILED": "Fehlgeschlagen",
+      "RETRYING": "Erneuter Versuch"
+    }
+  },
+  "documents": {
+    "title": "Dokumente",
+    "description": "Verweise auf Unterlagen, die in Paperless oder Nextcloud liegen. Das Dokument selbst bleibt dort.",
+    "empty": "Noch keine Dokumente.",
+    "connectPaperless": "Paperless verbinden, um sie zu übernehmen",
+    "noDate": "Kein Datum",
+    "opensElsewhere": "Öffnet im anderen System",
+    "provider": {
+      "PAPERLESS": "Paperless",
+      "NEXTCLOUD": "Nextcloud",
+      "MANUAL": "Manuell erfasst"
+    }
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "description": "Wie diese Installation für den Haushalt eingerichtet ist.",
+    "integrations": "Integrationen",
+    "integrationsHint": "Verbindungen zu Paperless, Nextcloud und anderen.",
+    "nothingForYou": "Für deine Rolle gibt es hier noch nichts."
   }
 }

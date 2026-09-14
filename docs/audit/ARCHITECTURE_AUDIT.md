@@ -1800,3 +1800,118 @@ and the expected shape), no token (401) and a wrong token (401).
 - **Rate limiting on the endpoint.** The token is the control and the
   surface is a LAN. Worth revisiting if the app is ever exposed beyond
   one.
+
+---
+
+## Phase 7c: Provider adapters, sync runs and document references
+
+Vertical slice 8, built on the credential vault from 7b. **ADR-020**
+records the decisions.
+
+### A bug my own test caught, in the code I had just written
+
+The integration test asserting "a token never reaches a sync run" failed
+on its first run. `describeFailure` stored `error.message.slice(0, 300)`,
+and the Paperless adapter had interpolated the underlying fetch error into
+its own message — and an underlying fetch error routinely names the URL it
+was called with, and a URL can carry a credential.
+
+What makes this worth recording is that I had already written a comment in
+the adapter's own test claiming the sync command "stores a classified kind
+and a bounded message rather than whatever came back". It did not. The
+comment described the design I intended; the code did the opposite; only
+the test knew.
+
+Fixed at both ends, deliberately: the adapter now classifies without
+echoing the cause, and the driver ignores the message entirely in favour
+of a fixed table of this application's own words. Either fix alone would
+have passed the test. Both are there because the failure mode is a
+credential in a database column that is rendered in the UI and kept
+indefinitely.
+
+### `PARTIAL` is the whole reason a sync run is a state machine
+
+A run that imported eleven documents and choked on the twelfth has done
+real work **and** has not finished. Calling it success loses the error;
+calling it failure re-imports eleven documents and makes the counts
+meaningless. So pages are imported one transaction each, the cursor
+advances per page, and a failure after progress ends as `PARTIAL` with the
+progress and the error stored together.
+
+A failed run does **not** advance the cursor — nothing about where it
+stopped can be trusted. And a run that imported nothing cannot be called
+partial: that is a failure wearing a friendlier name, and it would advance
+the cursor past documents nobody has seen. The domain refuses it.
+
+### "Never silently overwrite local edits" is a schema decision
+
+`docs/domain/state-machines.md` states that rule in prose. It is enforced
+by making provider-owned and household-owned fields **different columns**:
+`title` is Paperless's and a sync overwrites it; `titleOverride` and `note`
+are the household's and a sync cannot reach them.
+
+No dirty flag, no last-writer-wins comparison, no timestamp race — the
+question never arises. The alternative (one `title` plus a flag) fails the
+first time somebody edits through a path that forgot to set it.
+
+Idempotency is the same kind of decision: a unique index on
+`(household, provider, externalId)` makes re-running a page an update
+rather than a duplicate, whatever the adapter does.
+
+### The adapter distrusts the provider
+
+Every field is checked rather than destructured; a malformed row is
+skipped rather than becoming a reference with `undefined` in it. The
+document URL is **built from the configured base**, never taken from the
+response — a URL from a provider would be an open redirect, and these are
+links the household clicks. `isSafeDocumentUrl` rejects anything but
+http(s), at import and again at render, because a row could predate the
+check.
+
+OCR text is never read, and `truncate_content=true` asks Paperless not to
+send it — `docs/integrations/integration-contracts.md` says so, and it is
+also megabytes per document.
+
+### Integrations are the strictest permission in the app after Audit
+
+`docs/permissions.md` gives them to Owner/Admin only — "none by default"
+even for an adult. `authorizeIntegrationAccess` deliberately does not
+delegate to `canAccess`, because an `ADULT` falls through its role
+branches to `true`. Delegating would hand every adult the ability to point
+a connection at a new base URL and store a credential under it, which is
+configuration of where the household's data goes rather than use of it.
+
+### Verified
+
+`tsc --noEmit`, `eslint .`, 561 unit and integration tests, `next build`,
+and 161 E2E tests (2 skipped by project gate) against the standalone
+bundle — including an end-to-end sync against an unreachable host, which
+proves the failure path reports in the app's own words and records itself
+where "is this working?" can be answered from it. The rendered page was
+also checked directly for the token: absent from the HTML, and the field
+is `type="password"`.
+
+### A dev-environment trap worth writing down
+
+Running `next build` while `next dev` is serving leaves a `.next` that the
+dev server then reads as authoritative, and every route 404s. It cost time
+twice in this session before I recognised it. It is not a product bug —
+the production build and the whole E2E suite were fine throughout — and
+the fix is `rm -rf .next` and restart. Worth knowing because the symptom
+(every page 404s, including `/login`) looks exactly like something
+catastrophic.
+
+### Not done
+
+- **Nextcloud and CalDAV adapters.** A connection can be configured for
+  either and refuses to sync with `NO_ADAPTER`, which is clearer than a
+  run that silently imports nothing.
+- **Scheduled and automatic-retry syncs.** `FAILED -> RETRYING -> RUNNING`
+  exists in the machine and is tested, but nothing drives it; the
+  household presses the button. Both need a backoff policy per error kind
+  and belong with the existing reminder worker (ADR-013).
+- **Linking a document to a case, expense or trip.** This is the
+  "context links" half of the integration contract and the generic linking
+  work deferred since Phase 3. It is now the most-deferred item in the
+  project and should be the next thing built.
+- **Manual document references.** Supported by the schema, no UI.

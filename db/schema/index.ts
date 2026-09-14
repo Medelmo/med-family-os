@@ -11,4 +11,5 @@ export * from "./calendar";
 export * from "./finance";
 export * from "./travel";
 export * from "./assets";
+export * from "./integrations";
 export * from "./outbox";

@@ -88,6 +88,18 @@ test.describe("signed in", () => {
     await expectNoViolations(page);
   });
 
+  test("documents page has no automatically detectable WCAG violations", async ({ page }) => {
+    await page.goto("/documents");
+    await expect(page.getByRole("heading", { name: "Documents" })).toBeVisible();
+    await expectNoViolations(page);
+  });
+
+  test("integrations page has no automatically detectable WCAG violations", async ({ page }) => {
+    await page.goto("/settings/integrations");
+    await expect(page.getByRole("heading", { name: "Integrations", level: 1 })).toBeVisible();
+    await expectNoViolations(page);
+  });
+
   test("more page has no automatically detectable WCAG violations", async ({ page }) => {
     await page.goto("/more");
     await expect(page.getByRole("heading", { name: "More" })).toBeVisible();
@@ -99,7 +111,7 @@ test.describe("signed in", () => {
   // non-wrapping flex row, so each new destination pushed the page wider
   // until, at eight, a phone viewport overflowed and taps began landing on
   // the wrong element.
-  for (const path of ["/today", "/calendar", "/cases", "/inbox", "/notifications", "/more", "/finance", "/trips", "/assets"]) {
+  for (const path of ["/today", "/calendar", "/cases", "/inbox", "/notifications", "/more", "/finance", "/trips", "/assets", "/documents", "/settings", "/settings/integrations"]) {
     test(`${path} does not scroll horizontally`, async ({ page }) => {
       await page.goto(path);
       const overflow = await page.evaluate(() => ({
@@ -171,7 +183,9 @@ test.describe("signed in", () => {
       "/finance",
       "/trips",
       "/assets",
+      "/documents",
       "/family",
+      "/settings",
     ]);
     // Colour alone must not communicate where you are (CLAUDE.md §13).
     await expect(nav.getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");

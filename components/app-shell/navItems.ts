@@ -39,7 +39,9 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/finance", labelKey: "finance", primary: false },
   { href: "/trips", labelKey: "trips", primary: false },
   { href: "/assets", labelKey: "assets", primary: false },
+  { href: "/documents", labelKey: "documents", primary: false },
   { href: "/family", labelKey: "family", primary: false },
+  { href: "/settings", labelKey: "settings", primary: false },
 ];
 
 export const PRIMARY_NAV_ITEMS = NAV_ITEMS.filter((item) => item.primary);
