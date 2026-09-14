@@ -38,6 +38,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/calendar", labelKey: "calendar", primary: false },
   { href: "/finance", labelKey: "finance", primary: false },
   { href: "/trips", labelKey: "trips", primary: false },
+  { href: "/assets", labelKey: "assets", primary: false },
   { href: "/family", labelKey: "family", primary: false },
 ];
 

@@ -231,3 +231,53 @@ describe("attention rules: preparation before a date", () => {
     );
   });
 });
+
+/**
+ * A protection ending is not the same thing as a deadline. Nothing is
+ * owed by the date — something stops applying on it, and the useful
+ * moment to act is before, with enough notice to decide.
+ */
+describe("attention rules: cover about to lapse", () => {
+  const expiring = (days: number) =>
+    candidate({ kind: "asset", dueOn: null, expiresOn: isoDateAfter(days), nextAction: "Decide whether to extend" });
+
+  it("says nothing while the cover has months left", () => {
+    expect(codes(expiring(120))).not.toContain("COVER_ENDING");
+  });
+
+  it("surfaces cover inside its own, longer window", () => {
+    expect(codes(expiring(DEFAULT_ATTENTION_RULES.expiryWindowDays))).toContain("COVER_ENDING");
+    expect(codes(expiring(DEFAULT_ATTENTION_RULES.expiryWindowDays + 1))).not.toContain("COVER_ENDING");
+  });
+
+  it("counts the days left, so the reason can be explained", () => {
+    expect(evaluateAttention(expiring(9), TODAY, NOW)).toContainEqual({
+      code: "COVER_ENDING",
+      context: { daysUntilExpiry: 9 },
+    });
+  });
+
+  it("still speaks on the last day", () => {
+    expect(codes(expiring(0))).toContain("COVER_ENDING");
+  });
+
+  // Unlike an overdue task, there is nothing left to do once it has
+  // lapsed — and a list that keeps mentioning last year's warranty is a
+  // list people stop reading.
+  it("goes quiet once the cover has lapsed", () => {
+    expect(codes(expiring(-1))).not.toContain("COVER_ENDING");
+    expect(codes(expiring(-400))).toEqual([]);
+  });
+
+  // The two dates mean different things and are carried separately, so an
+  // asset can be overdue a service and about to lose its cover at once.
+  it("is independent of a due date on the same item", () => {
+    const both = candidate({
+      kind: "asset",
+      dueOn: isoDateAfter(-5),
+      expiresOn: isoDateAfter(10),
+      nextAction: "Book the service",
+    });
+    expect(codes(both)).toEqual(expect.arrayContaining(["OVERDUE", "COVER_ENDING"]));
+  });
+});

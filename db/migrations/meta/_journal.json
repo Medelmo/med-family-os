@@ -57,6 +57,13 @@
       "when": 1789384595259,
       "tag": "0007_premium_owl",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789386090251,
+      "tag": "0008_bitter_amazoness",
+      "breakpoints": true
     }
   ]
 }

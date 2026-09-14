@@ -71,10 +71,14 @@
     before. An answer always shows who gave it and when (ADR-016).
 
 ## Assets
-41. Assets
-42. Asset detail
-43. Warranty detail
-44. Maintenance
+41. Assets — `/assets`. Built. Each card says the two things that matter
+    from a list: when the next service is due, and whether it is still
+    covered.
+42. Asset detail — `/assets/[assetId]`. Built, and carries 43 and 44.
+43. Warranty detail — part of 42. A warranty has no page of its own: it is
+    a provider, two dates and a reference, and it means nothing apart from
+    the thing it covers.
+44. Maintenance — part of 42, as an append-only history (ADR-017).
 
 ## Integration/Admin
 45. Integrations

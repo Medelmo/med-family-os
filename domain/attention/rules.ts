@@ -34,7 +34,8 @@ export type AttentionReasonCode =
   | "MISSING_NEXT_ACTION"
   | "HIGH_PRIORITY"
   | "PREPARATION_INCOMPLETE"
-  | "UNVERIFIED_FACTS";
+  | "UNVERIFIED_FACTS"
+  | "COVER_ENDING";
 
 export interface AttentionRuleConfig {
   /** A due date within this many days counts as "due soon". */
@@ -50,12 +51,22 @@ export interface AttentionRuleConfig {
    * answered — need weeks, not days.
    */
   preparationWindowDays: number;
+  /**
+   * How far ahead a protection that is about to lapse is surfaced.
+   *
+   * Longer again than the preparation window: deciding whether to claim,
+   * extend or replace before a warranty runs out is not a thing anyone
+   * does in an afternoon, and the day after it lapses there is nothing to
+   * decide.
+   */
+  expiryWindowDays: number;
 }
 
 export const DEFAULT_ATTENTION_RULES: AttentionRuleConfig = {
   dueSoonWindowDays: 3,
   waitingStaleDays: 14,
   preparationWindowDays: 21,
+  expiryWindowDays: 30,
 };
 
 /**
@@ -76,6 +87,7 @@ const WEIGHTS: Record<AttentionReasonCode, number> = {
   // packed the night before, and a hotel cannot grow a lift.
   UNVERIFIED_FACTS: 65,
   PREPARATION_INCOMPLETE: 35,
+  COVER_ENDING: 40,
 };
 
 const PRIORITY_BONUS: Record<Priority, number> = {
@@ -126,7 +138,7 @@ export interface PreparationContext {
 
 export interface AttentionCandidate {
   id: string;
-  kind: "task" | "case" | "reimbursement" | "trip";
+  kind: "task" | "case" | "reimbursement" | "trip" | "asset";
   title: string;
   priority: Priority;
   /** Date-only, as "YYYY-MM-DD" — see toIsoDate. */
@@ -142,6 +154,17 @@ export interface AttentionCandidate {
   nextAction: string | null;
   /** Only meaningful alongside a `dueOn`; see PreparationContext. */
   preparation?: PreparationContext | null;
+  /**
+   * A day on which something the household relies on stops applying —
+   * a warranty, a policy, a permit, a passport.
+   *
+   * Deliberately not the same field as `dueOn`. "Due" means the household
+   * owes an action by that date; "expires" means a protection ends on it,
+   * and the useful moment to act is *before*, with enough notice to
+   * decide. After it passes there is nothing left to do, so unlike an
+   * overdue item this one stops being said at all.
+   */
+  expiresOn?: string | null;
 }
 
 export interface AttentionItem extends AttentionCandidate {
@@ -197,6 +220,16 @@ export function evaluateAttention(
       const { outstanding, unverified } = candidate.preparation;
       if (unverified > 0) reasons.push({ code: "UNVERIFIED_FACTS", context: { unverified, daysUntilDue } });
       if (outstanding > 0) reasons.push({ code: "PREPARATION_INCOMPLETE", context: { outstanding, daysUntilDue } });
+    }
+  }
+
+  if (candidate.expiresOn) {
+    const daysUntilExpiry = daysBetweenIsoDates(todayIso, candidate.expiresOn);
+    // Nothing is said once it has lapsed: there is no action left, and a
+    // list that keeps mentioning last year's warranty is a list people
+    // stop reading.
+    if (daysUntilExpiry >= 0 && daysUntilExpiry <= config.expiryWindowDays) {
+      reasons.push({ code: "COVER_ENDING", context: { daysUntilExpiry } });
     }
   }
 

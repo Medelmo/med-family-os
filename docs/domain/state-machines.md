@@ -86,6 +86,16 @@ UNVERIFIED -> REFUSED
 Both answers require a source and the date it was given. REFUSED is an
 answer, not an unfinished question.
 
+## Asset
+
+Deliberately none. An asset is owned, and then one day it is not; that is a
+single fact with a date (`disposedOn`), not a lifecycle. See ADR-017 for
+the test applied: does a human ever have to decide which state it should be
+in next?
+
+A maintenance record is append-only and cannot be dated in the future.
+A warranty cannot end before it starts.
+
 ## Integration sync
 
 PENDING -> RUNNING -> SUCCEEDED

@@ -1579,3 +1579,117 @@ dynamic route the page-level loop cannot reach.
 - **Trip-linked deadlines, expenses and documents.** The domain model
   allows a deadline to point at a trip; doing it well needs the same
   generic linking work Phase 3 deferred.
+
+---
+
+## Phase 6b: Assets, warranties and maintenance
+
+Vertical slice 7, which completes Phase 6. **ADR-017** records the
+decisions; `docs/domain/state-machines.md` now has an Asset section whose
+content is that there deliberately is no state machine.
+
+### The decision was not to add one
+
+The last three slices each added a state machine, and the reflex to add a
+fourth was the thing to resist. Cases, trips and claims have one because
+each is a *process* the household is working through, where the legal next
+steps are the point. A washing machine is not a process: it is owned, and
+then one day it is not — sold, broken, given away — which is a single fact
+with a date.
+
+`PLANNED/ACTIVE/RETIRED` would have produced states nobody transitions
+deliberately and which drift the moment someone forgets. The test now
+written down is: **does a human ever have to decide which state it should
+be in next?** For an asset the answer is no, so `disposedOn` records the
+only transition there is.
+
+### Cover ending is not a deadline, and the difference is in the data
+
+An asset carries two dates in two different fields, on purpose:
+
+- `dueOn` — the next service. Something is **owed by** that date, so it
+  can be overdue, and it should keep being said until it is done.
+- `expiresOn` — when the warranty runs out. A protection **ends on** it,
+  the useful moment to act is *before*, and once it has passed there is
+  nothing left to do.
+
+Hence a new reason code `COVER_ENDING` with its own **30-day** window, and
+— unlike `OVERDUE` — it **goes silent once the date passes**. A list that
+keeps mentioning last year's warranty is a list people stop reading.
+
+The field is `expiresOn`, not `warrantyEndsOn`: the same shape fits a
+passport, a permit or an insurance policy, so the rules module stays
+aggregate-agnostic. Three slices in, that property has now paid for itself
+three times.
+
+### Sensitivity is decided by category
+
+`MEDICAL` and `MOBILITY` assets are raised to `SENSITIVE` automatically; a
+wheelchair or a nebuliser in the list says something about a household
+member's health, and a dishwasher says nothing about anybody. Deciding it
+from the category rather than asking makes the safe answer the automatic
+one — the same argument that made every expense `SENSITIVE` by default.
+
+### Two derived answers that could each have been wrong
+
+- **Next service due** comes from the *most recent* record, not the
+  earliest outstanding `nextDueOn`. Each service supersedes the plan the
+  one before it set, so a machine serviced early in March is not still due
+  February's predicted date. Same-day ties go to the record entered last,
+  because that means somebody corrected the first.
+- **Cover ends** is the *latest* end date across warranties. Two
+  overlapping covers leave the household protected until the later one
+  runs out, and warning them when the shorter lapses would be crying wolf.
+
+### The permissions matrix distinguishes assets from trips, and so does this
+
+`docs/permissions.md` gives a CHILD "explicit" access to assets, where
+trips get a "participant-safe view". Those are genuinely different, and
+the difference is honoured rather than smoothed over: a child sees assets
+scoped to them personally and **not** the household's own things. So no
+scope inheritance here, unlike `tripItemScope()` in the slice before.
+
+A first draft of the test asserted a child could see the household
+dishwasher. The kernel refused it, and the kernel was right. Worth
+recording because the previous slice's equivalent surprise went the *other*
+way — there the kernel was right and the surrounding code was wrong. The
+lesson is the same either way: when the kernel and an expectation
+disagree, the matrix decides, not the intuition.
+
+### An empty card, found by looking
+
+The asset detail page rendered an empty bordered box whenever an asset had
+none of its optional fields filled in — every field on that card is
+optional, so with a bare name it was a card that said nothing. Not
+something a type checker, a lint rule or an axe sweep has any opinion
+about, and not something any of the seven passing E2E tests noticed. It
+took opening the page.
+
+### Verified
+
+`tsc --noEmit`, `eslint .`, 449 unit and integration tests, `next build`,
+and 121 E2E tests (2 skipped by project gate) against the standalone
+bundle. The asset detail page carries its own horizontal-overflow guard,
+as the trip detail page does, because both live behind dynamic routes the
+page-level loop cannot reach.
+
+### Not done
+
+- **Linking an asset to the expense that bought it**, or to a case about a
+  failed repair. Both want the generic linking work Phase 3 deferred, and
+  doing either ad hoc would mean a third bespoke join table.
+- **`disposeAsset`'s version check is unreachable sequentially**, because
+  `ALREADY_DISPOSED` is checked first — which is the right order, since
+  "this is already gone" tells the household more than "someone else
+  changed it". It still earns its place against two *simultaneous*
+  disposals, and the test exercises exactly that rather than pretending
+  the sequential case proves anything.
+
+---
+
+## Phase 6 complete
+
+Both vertical slices of Phase 6 are done. The remaining phases are 7
+(integrations: Paperless, Nextcloud, Home Assistant, calendar providers)
+and 8 (AI), which CLAUDE.md §17 gates behind "authorization, audit and
+provenance foundations are proven".

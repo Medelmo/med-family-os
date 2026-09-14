@@ -5,6 +5,7 @@ import { getHouseholdTimezone, getTasks, type TaskListItem } from "../tasks/getT
 import { getCases, type CaseListItem } from "../cases/getCases";
 import { getReimbursements, type ReimbursementListItem } from "../finance/getFinance";
 import { getTrips, type TripListItem } from "../travel/getTrips";
+import { getAssets, type AssetListItem } from "../assets/getAssets";
 import { getCalendarOccurrences, type CalendarOccurrence } from "../calendar/getCalendarEvents";
 import { householdToday } from "../../time";
 import { wallClockToInstant } from "../../../domain/calendar/timezone";
@@ -26,10 +27,10 @@ import { canAccess } from "../../policies/authorize";
  * "a projection, not stored truth". Storing it would create a second copy
  * of the truth that can silently disagree with the first.
  *
- * Tasks, cases, claims and trips are ranked in one list rather than four:
- * the household has one attention budget, and splitting it by aggregate
- * would leave the reader to merge the lists in their head — which is the
- * work this view exists to do for them.
+ * Tasks, cases, claims, trips and assets are ranked in one list rather
+ * than five: the household has one attention budget, and splitting it by
+ * aggregate would leave the reader to merge the lists in their head —
+ * which is the work this view exists to do for them.
  *
  * Each aggregate maps itself onto the rules' normalised candidate at its
  * own edge, below. The rules never see a status enum, so a new state on
@@ -46,11 +47,12 @@ export async function getAttention(
 
   // getTrips needs the household's "today" to derive each trip's phase,
   // so it cannot start until the timezone is resolved.
-  const [tasks, cases, claims, trips] = await Promise.all([
+  const [tasks, cases, claims, trips, assets] = await Promise.all([
     getTasks(actor, householdId),
     getCases(actor, householdId),
     getReimbursements(actor, householdId),
     getTrips(actor, householdId, todayIso),
+    getAssets(actor, householdId),
   ]);
 
   const items = projectAttention(
@@ -59,6 +61,7 @@ export async function getAttention(
       ...cases.map(caseToCandidate),
       ...claims.map(reimbursementToCandidate),
       ...trips.map(tripToCandidate),
+      ...assets.map(assetToCandidate),
     ],
     todayIso,
     now,
@@ -194,6 +197,37 @@ function tripToCandidate(trip: TripListItem): AttentionCandidate {
     actionable: false,
     nextAction: trip.destination,
     preparation: { outstanding: trip.readiness.outstanding, unverified: trip.readiness.unverified },
+  };
+}
+
+/**
+ * Maps an asset onto the rules' normalised shape.
+ *
+ * An asset carries the two dates that mean different things, and carries
+ * them in different fields on purpose: a service is *due* by its date (so
+ * it can be overdue), while cover *expires* on its date (so there is
+ * nothing to do once it has). product-spec.md names "upcoming warranty" as
+ * an attention trigger; this is that, plus the service history's own
+ * answer to when the thing is next due.
+ *
+ * An asset with neither date produces no reasons at all and never appears,
+ * which is right: a bookshelf is not something that needs attention.
+ */
+function assetToCandidate(asset: AssetListItem): AttentionCandidate {
+  return {
+    id: asset.id,
+    kind: "asset",
+    title: asset.name,
+    priority: "NORMAL",
+    dueOn: asset.nextServiceDueOn,
+    expiresOn: asset.coverEndsOn,
+    waiting: null,
+    blocked: null,
+    // Never nagged about a missing next action: "book the service" is
+    // already what an overdue service date says, and saying it twice is
+    // how a list stops being read.
+    actionable: false,
+    nextAction: asset.location,
   };
 }
 

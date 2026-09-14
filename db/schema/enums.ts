@@ -28,6 +28,21 @@ export const inboxItemStatusEnum = pgEnum("inbox_item_status", ["UNTRIAGED", "TR
 // inspection rather than looping forever (ADR-013).
 export const outboxStatusEnum = pgEnum("outbox_status", ["PENDING", "PROCESSED", "FAILED"]);
 
+// Mirrors ASSET_CATEGORIES in domain/assets/asset.ts. MEDICAL and
+// MOBILITY are not just labels: the command raises those assets to
+// SENSITIVE, because a wheelchair in the list says something about a
+// household member's health (ADR-017).
+export const assetCategoryEnum = pgEnum("asset_category", [
+  "APPLIANCE",
+  "ELECTRONICS",
+  "FURNITURE",
+  "MOBILITY",
+  "MEDICAL",
+  "VEHICLE",
+  "TOOL",
+  "OTHER",
+]);
+
 // Mirrors domain/travel/trip.ts. There is deliberately no IN_PROGRESS or
 // COMPLETED: whether a trip is upcoming, happening or over is derived from
 // its dates, never stored (ADR-016).
