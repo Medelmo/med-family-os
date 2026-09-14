@@ -484,3 +484,176 @@ rather than guessed at.
 Per CLAUDE.md §19/§23: **do not begin Phase 1 automatically.** This audit
 and the Phase 0 fixes above are the complete Phase 0 deliverable; Phase 1
 starts only on explicit instruction.
+
+---
+
+## Phase 1 — Foundation (implemented)
+
+Authorized to proceed autonomously. Delivered the full "vertical slice 1"
+from `docs/implementation/implementation-plan.md`: **Authentication ->
+household -> person -> policy -> audit**, plus the Phase 1 entry
+requirements §11/§19/§21/§22 above flagged as blockers.
+
+### What was built
+
+- **Config**: `eslint.config.js`, `vitest.config.ts`, `playwright.config.ts`,
+  `drizzle.config.ts`, `types/url-pattern.d.ts` shim, `tsconfig.json`
+  `skipLibCheck: true` (see finding below).
+- **Schema** (`db/schema/`): `enums`, `auth` (users + session_revocation,
+  no Auth.js Adapter tables — see ADR-006 correction), `household`
+  (household + household_membership with a unique (householdId, userId)
+  index), `person`, `audit`. Migration generated and applied against a live
+  PostgreSQL 18.6 container (`db/migrations/0000_ambiguous_the_call.sql`).
+- **Domain** (`domain/family/`): `Household`, `Person`,
+  `HouseholdMembership` types, plus `wouldLeaveHouseholdWithoutOwner` — a
+  domain invariant guarding against a household ending up with zero active
+  OWNERs (unit-tested).
+- **Application**: `bootstrapHousehold` (first-run setup, ADR-012),
+  `addHouseholdMember`, `getHouseholdMembers`, `isSetupComplete`,
+  `recordAuditEvent`, `application/errors.ts`
+  (`AuthorizationError`/`ConflictError`/`NotFoundError`), and
+  `application/policies/household.ts` — the first concrete instance of the
+  "feature-level policy wrapper on top of the base `canAccess`" pattern
+  this audit's §6 called for.
+- **Infrastructure**: `infrastructure/db/client.ts` (Drizzle +
+  postgres.js), `infrastructure/auth/{auth.config,auth,password}.ts`
+  (Auth.js v5, Argon2id, JWT + explicit revocation table — ADR-006),
+  `infrastructure/logging/logger.ts` (pino, ADR-010),
+  `infrastructure/rate-limit/limiter.ts` (rate-limiter-flexible on a
+  dedicated `pg.Pool`, ADR-009).
+- **UI**: `app/tokens.css` (design tokens as CSS custom properties,
+  light/dark/system, ADR-011), `components/ui/{Button,TextField,Card}`,
+  `components/app-shell/AppShell` (a top bar, not yet the full
+  Sidebar/MobileBottomNav — documented as an intentional Phase 1 scope call
+  in the component's own file), `/setup` (first-run bootstrap),
+  `/login`, `/dashboard`, `/family` (list + OWNER/ADMIN add-member form).
+- **i18n**: `next-intl` wired without URL routing (ADR-008), `messages/{en,de}.json`
+  with real, hand-written (not machine-translated) copy for every string
+  actually used.
+- **Reliability**: `app/api/health` (liveness) and `app/api/ready`
+  (readiness, checks `select 1`), per the Phase 1 roadmap item.
+- **New ADRs**: 006 (authentication, revised mid-implementation — see
+  below), 007 (case state machine), 008 (i18n), 009 (rate limiting, revised
+  mid-implementation), 010 (logging), 011 (styling), 012 (no public
+  registration).
+
+### Corrections made *during* implementation (verified against real library behavior, not assumed)
+
+Consistent with this document's own opening methodology — read source, run
+the actual tool, don't guess — four more issues surfaced only once real
+code was written and actually executed, each fixed on the spot:
+
+1. **ADR-006 was wrong as first written.** `@auth/core`'s own source
+   (`lib/utils/assert.js`) rejects database session strategy combined with
+   a Credentials-only provider list (`UnsupportedStrategy`). Revised to JWT
+   strategy with an explicit `session_revocation` table checked in the
+   `jwt` callback — see the ADR's own "Correction" section for the full
+   account, including the general lesson ("read the actual library source
+   for a hard API constraint before committing to an architecture that
+   depends on it") recorded there for future ADRs.
+2. **ADR-009's rate limiter needed a different DB client than assumed.**
+   `RateLimiterPostgres` speaks the `pg` (node-postgres) query interface,
+   not `postgres.js`'s tagged-template API that Drizzle uses. Fixed with a
+   small dedicated `pg.Pool`, documented in the ADR; the limiter's table is
+   self-managed by the library, not part of the Drizzle schema.
+3. **A real `canAccess` composition bug, caught by its own test suite.**
+   `application/policies/household.ts`'s first draft of
+   `authorizePersonAccess` passed `personScopeIds: [resource.personId]`
+   unconditionally — but that field is a *universal* restriction in the
+   base `canAccess` (checked before any role branch), so it silently
+   confined ADULT/VIEWER to only their own person row instead of the
+   household-scoped/read access `docs/permissions.md` actually grants
+   them. `tests/unit/application/household-policy.spec.ts` caught this
+   immediately (2 failing assertions); fixed by branching CHILD's
+   self-scope restriction out from the household-scoped default.
+4. **Two Person-sensitivity docs contradicted each other.** Classifying
+   `Person` as `SENSITIVE` (matching `domain-model.md`'s own "personal data
+   -> SENSITIVE" rule) combined with the fixed `canAccess`'s "CHILD is
+   blocked from any non-NORMAL resource" would make a child unable to see
+   their own profile — contradicting `docs/permissions.md`'s "Child People
+   access: self/allowed". Resolved by classifying `Person`'s core identity
+   fields as NORMAL and documenting the reasoning directly in
+   `docs/domain/domain-model.md` (a person's *name* isn't sensitive
+   content; sensitive content *about* a person lives on the aggregate that
+   carries it).
+5. **`tsconfig.json` was missing `skipLibCheck: true`.** Without it,
+   `tsc --noEmit` fails on internal type-export inconsistencies inside
+   `@auth/core`'s and `drizzle-orm`'s own `.d.ts` files (e.g. MySQL/
+   SingleStore/Gel dialect type errors having nothing to do with this
+   Postgres-only project) — noise every real-world Next.js project
+   suppresses by default (it's in `create-next-app`'s own template) and
+   this scaffold's tsconfig had never had a dependency large enough to
+   surface the gap until Phase 1 added one.
+6. **Next.js 16.3.5 deprecates the `middleware.ts` file convention in
+   favor of `proxy.ts`.** Discovered from the dev server's own startup
+   warning during the live smoke test below (an example of why "run it,
+   don't just typecheck it" matters — this would never surface from
+   `tsc`/`vitest` alone). Verified via Next.js's own build source
+   (`PROXY_FILENAME`/`MIDDLEWARE_LOCATION_REGEXP` in `next/dist/lib/constants.js`)
+   that it's a pure filename rename with an identical default-export
+   convention, then applied it (`git mv middleware.ts proxy.ts`) and
+   re-verified the warning was gone.
+
+### Verification performed (not just claimed)
+
+- `pnpm typecheck` — clean.
+- `pnpm lint` — clean (after also fixing a real `eslint.config.js` bug:
+  `FlatCompat(...).extends("next/core-web-vitals", ...)` crashed with
+  "Converting circular structure to JSON" from a circular self-reference
+  inside `eslint-plugin-react`'s flat config; fixed by importing
+  `eslint-config-next`'s native flat-config exports directly instead of
+  going through the legacy-compat shim).
+- `pnpm test` (Vitest) — **31/31 passing**, across 4 files: the original
+  authorization suite (13, expanded from 3), a new domain unit suite (5),
+  a new policy unit suite (9), and a new **integration suite (4)** that
+  runs `bootstrapHousehold`/`addHouseholdMember`/`getHouseholdMembers`
+  against a real PostgreSQL 18.6 container, truncating tables between
+  cases.
+- **Live browser smoke test** against `pnpm dev` + the same live database:
+  `/` correctly redirects to `/setup` on an empty database; the setup form
+  creates a household and signs the owner in; `/dashboard` shows the
+  correct greeting and member count; `/family` lists members and lets the
+  OWNER add a CHILD member with no login; sign-out redirects to `/login`
+  and actually revokes the session row (verified by the immediate
+  `/dashboard` -> `/login` redirect on the next request); an unauthenticated
+  direct visit to `/dashboard` redirects to `/login`; a wrong password is
+  rejected with a translated German/English-ready error message and does
+  not leak whether the account exists.
+- `docker compose up -d db` + `pnpm db:migrate` — applied cleanly; schema
+  inspected directly in the generated SQL before applying.
+- A local-only `docker-compose.override.yml` (gitignored) was needed to
+  reach the `db` container from the host during development — and revealed
+  a genuine Docker behavior worth recording: **`internal: true` on a
+  Compose network blocks published ports from binding at all**, not just
+  outbound internet access as the flag name might suggest (verified
+  empirically: `docker port` stayed empty even after `--force-recreate`
+  until the override also set `internal: false`). This doesn't affect the
+  shipped `docker-compose.yml` — the override never ships — but is worth
+  knowing for anyone else who tries to add a dev-only port-forward the
+  "obvious" way.
+
+### What remains for Phase 1 (not done in this pass, by design)
+
+- Full `Sidebar`/`MobileBottomNav` per `docs/design/design-system.md` —
+  deferred until more than 2 nav destinations exist (documented in
+  `components/app-shell/AppShell.module.css`).
+- E2E (Playwright) and accessibility (`@axe-core/playwright`) tests — the
+  config now exists (`playwright.config.ts`) but no spec files were
+  written yet; Vitest + a live browser smoke test covered this pass's
+  verification instead.
+- Module-boundary lint enforcement (§2) — not added; still a Medium
+  finding for whenever more than one `features/*` module exists to have
+  boundaries between.
+- `docs/architecture/deployment-feasibility.md`'s host-facts gap (§17) —
+  still open, still requires the user's own environment access.
+
+### Git
+
+This repository had no version control (`git init` had never been run).
+Initialized it partway through Phase 1, specifically so the
+`middleware.ts` -> `proxy.ts` codemod (`@next/codemod@canary`) could run
+safely with `--force` and a reviewable diff, rather than either skipping a
+real verification tool or risking an unreviewable destructive rewrite on
+an unversioned tree. `.gitignore` was already correct (verified `.env`,
+`node_modules`, and the dev-only Compose override are excluded before the
+first commit).

@@ -30,7 +30,7 @@ export const logger = pino({
 });
 
 // Per-request correlation ID (docs/security/security-model.md: "request
-// correlation IDs"). Populated by middleware.ts for every request; read
+// correlation IDs"). Populated by proxy.ts for every request; read
 // anywhere in the application/domain layers without threading a parameter
 // through every function call.
 const correlationStorage = new AsyncLocalStorage<{ requestId: string }>();

@@ -2,8 +2,12 @@ import { NextResponse } from "next/server";
 import NextAuth from "next-auth";
 import { authConfig } from "./infrastructure/auth/auth.config";
 
-// Edge-runtime middleware: see infrastructure/auth/auth.config.ts for why
-// the redirect below is an optimistic "looks logged in" check, not the
+// Edge-runtime proxy (Next.js 16 renamed the "middleware.ts" file
+// convention to "proxy.ts" — same file location and default-export
+// convention, verified against next@16.3.5's own build source since the
+// migration codemod, `npx @next/codemod@canary middleware-to-proxy .`,
+// made no changes here itself). See infrastructure/auth/auth.config.ts for
+// why the redirect below is an optimistic "looks logged in" check, not the
 // authoritative (DB-backed, revocation-checked) auth enforced by every
 // protected Server Component/Server Action/Route Handler via the full
 // auth() in infrastructure/auth/auth.ts.

@@ -3,8 +3,8 @@ import type { NextAuthConfig } from "next-auth";
 /**
  * Edge-safe subset of the Auth.js config: no database access, no Node-only
  * native modules (@node-rs/argon2, pg). This is the only auth config
- * middleware.ts is allowed to import, since Next.js middleware runs on the
- * Edge runtime.
+ * proxy.ts is allowed to import, since Next.js's proxy convention
+ * (formerly "middleware.ts") runs on the Edge runtime.
  *
  * Consequence worth stating explicitly rather than discovering by
  * accident: middleware's `authorized()` check below only verifies the JWT's
