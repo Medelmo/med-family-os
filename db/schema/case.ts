@@ -32,6 +32,8 @@ export const cases = pgTable(
     waitingSince: timestamp("waiting_since", { mode: "date", withTimezone: true }),
     followUpAt: timestamp("follow_up_at", { mode: "date", withTimezone: true }),
     waitingNoFollowUpReason: text("waiting_no_follow_up_reason"),
+    /** See the same field on db/schema/task.ts. */
+    followUpNotifiedAt: timestamp("follow_up_notified_at", { mode: "date", withTimezone: true }),
     /** An authority's file number and the like, so a wait can be chased. */
     externalReference: text("external_reference"),
 

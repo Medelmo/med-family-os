@@ -33,6 +33,13 @@ export const tasks = pgTable(
     waitingSince: timestamp("waiting_since", { mode: "date", withTimezone: true }),
     followUpAt: timestamp("follow_up_at", { mode: "date", withTimezone: true }),
     waitingIndefinite: boolean("waiting_indefinite").notNull().default(false),
+    /**
+     * Which follow-up moment the reminder scan has already announced.
+     * Compared against followUpAt rather than being a plain boolean, so
+     * pushing the follow-up date later automatically re-arms the reminder
+     * without anyone having to remember to clear a flag.
+     */
+    followUpNotifiedAt: timestamp("follow_up_notified_at", { mode: "date", withTimezone: true }),
 
     completedAt: timestamp("completed_at", { mode: "date", withTimezone: true }),
     cancelledAt: timestamp("cancelled_at", { mode: "date", withTimezone: true }),

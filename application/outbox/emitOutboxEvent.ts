@@ -6,16 +6,51 @@ import type { Database, Transaction } from "../../infrastructure/db/client";
  * free string so a handler and an emitter cannot silently disagree about
  * an event name.
  */
-export type OutboxEvent = {
-  type: "task.assigned";
-  payload: {
-    taskId: string;
-    taskTitle: string;
-    assignedPersonId: string;
-    /** Who performed the assignment — never notified about their own action. */
-    actorUserId: string;
-  };
-};
+export type OutboxEvent =
+  | {
+      type: "task.assigned";
+      payload: {
+        taskId: string;
+        taskTitle: string;
+        assignedPersonId: string;
+        /** Who performed the assignment — never notified about their own action. */
+        actorUserId: string;
+      };
+    }
+  // The three below are emitted by application/reminders/scanForReminders.ts
+  // rather than by a user action: nobody acts when a date arrives, which is
+  // exactly why they need announcing.
+  | {
+      type: "task.follow_up_due";
+      payload: {
+        taskId: string;
+        taskTitle: string;
+        waitingFor: string | null;
+        ownerPersonId: string | null;
+        createdBy: string | null;
+        followUpAt: string;
+      };
+    }
+  | {
+      type: "case.follow_up_due";
+      payload: {
+        caseId: string;
+        caseTitle: string;
+        waitingFor: string | null;
+        ownerPersonId: string | null;
+        createdBy: string | null;
+        followUpAt: string;
+      };
+    }
+  | {
+      type: "deadline.approaching";
+      payload: {
+        deadlineId: string;
+        deadlineTitle: string;
+        dueOn: string;
+        createdBy: string | null;
+      };
+    };
 
 export type OutboxEventType = OutboxEvent["type"];
 

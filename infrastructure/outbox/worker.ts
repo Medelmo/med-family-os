@@ -1,7 +1,14 @@
 import { processOutbox } from "../../application/outbox/processOutbox";
+import { scanForReminders } from "../../application/reminders/scanForReminders";
 import { logger } from "../logging/logger";
 
 const POLL_INTERVAL_MS = Number(process.env.OUTBOX_POLL_INTERVAL_MS ?? 10_000);
+
+// The reminder scan runs far less often than the outbox drain: it is
+// looking for dates that have passed, and a follow-up noticed within a
+// minute is indistinguishable from one noticed instantly, while a query
+// across every waiting task and case every ten seconds is pure waste.
+const REMINDER_SCAN_INTERVAL_MS = Number(process.env.REMINDER_SCAN_INTERVAL_MS ?? 60_000);
 
 declare global {
   var __medFamilyOsOutboxWorkerStarted: boolean | undefined;
@@ -36,9 +43,26 @@ export function startOutboxWorker(): void {
     }
   };
 
-  const timer = setInterval(tick, POLL_INTERVAL_MS);
-  // Don't hold the process open purely for the poll timer.
-  timer.unref?.();
+  const scan = async () => {
+    try {
+      const result = await scanForReminders();
+      const total = result.taskFollowUps + result.caseFollowUps + result.deadlines;
+      if (total > 0) {
+        logger.info({ event: "reminders.scanned", ...result }, "reminder scan emitted events");
+      }
+    } catch (error) {
+      // Same reasoning as the outbox tick: a failing scan must not kill
+      // the loop, or one bad row would stop every future reminder.
+      logger.error({ event: "reminders.scan_error", err: error }, "reminder scan threw");
+    }
+  };
+
+  const outboxTimer = setInterval(tick, POLL_INTERVAL_MS);
+  const reminderTimer = setInterval(scan, REMINDER_SCAN_INTERVAL_MS);
+  // Don't hold the process open purely for the poll timers.
+  outboxTimer.unref?.();
+  reminderTimer.unref?.();
 
   void tick();
+  void scan();
 }

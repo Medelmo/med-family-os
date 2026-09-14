@@ -32,6 +32,12 @@ export const deadlines = pgTable(
     taskId: uuid("task_id").references(() => tasks.id, { onDelete: "set null" }),
     caseId: uuid("case_id").references(() => cases.id, { onDelete: "set null" }),
     metAt: timestamp("met_at", { mode: "date", withTimezone: true }),
+    /**
+     * The due date a reminder has already gone out for. Storing the date
+     * rather than a boolean means moving the deadline re-arms the
+     * reminder by itself.
+     */
+    remindedForDueOn: date("reminded_for_due_on", { mode: "date" }),
 
     visibility: visibilityEnum("visibility").notNull().default("HOUSEHOLD"),
     sensitivity: sensitivityEnum("sensitivity").notNull().default("NORMAL"),

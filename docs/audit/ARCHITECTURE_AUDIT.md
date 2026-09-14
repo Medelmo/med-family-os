@@ -946,8 +946,62 @@ Attention.
 
 ---
 
+---
+
+## Phase 4a — Time-triggered reminders (implemented)
+
+The item deferred twice, now closed: the outbox has a **scheduled
+producer**, so `followUpAt` actively nudges instead of waiting to be
+noticed.
+
+Everything else in the application emits outbox events as a consequence of
+someone acting. Reminders are the exception — *nobody acts when a
+follow-up date arrives*, which is precisely the problem they exist to
+solve — so `application/reminders/scanForReminders.ts` notices the passage
+of time instead, and emits into the outbox built in Phase 2b. Nothing
+about the delivery path had to change.
+
+It scans three things: tasks waiting past their follow-up, cases waiting
+past theirs, and deadlines inside a seven-day window (deliberately wider
+than Attention's three-day "due soon": Attention answers "what should I
+look at when I open the app", a reminder answers "what should interrupt
+me", and a commitment deserves more warning than a task).
+
+**Idempotency is structural, not remembered.** The obvious design — a
+`reminded` boolean — needs every command that changes a date to remember to
+clear it, and one that forgets produces a reminder that never fires again.
+Instead the columns store *which moment was announced*
+(`followUpNotifiedAt`, `remindedForDueOn`) and the scan compares them
+against the current value. Rescheduling a follow-up therefore re-arms the
+reminder by itself, and no command has to know reminders exist. Tests
+cover both halves: the same follow-up is never announced twice across
+repeated scans, and moving the date does produce a second announcement.
+
+Recipients resolve to the accountable person, falling back to the creator.
+A person with no login has nowhere to be told, which is a normal outcome
+rather than a failure — the item still appears in Attention.
+
+### Verification
+
+177 unit/integration tests (18 new, covering every before/after/repeat/
+re-arm/ignore case) and 35 E2E. Verified live: seeded a task whose
+follow-up had already passed, started the app, and watched the in-process
+scan emit, the worker deliver, and the notification render — **with no
+user action at all**, which is the entire point.
+
+---
+
 ### Not yet done
 
+- **Calendar events and recurrence** (the rest of Phase 4) are not built.
+  CLAUDE.md §7's demand that "recurring events must store recurrence rules
+  and a timezone" and that "DST transitions must have tests" is a
+  substantial piece of work in its own right and is the natural next
+  increment — `household.timezone` already exists to support it.
+- **Notification preferences, quiet hours and escalation** (CLAUDE.md §16)
+  remain unimplemented, and now matter more than they did: with a
+  scheduled producer running, the volume of notifications is no longer
+  bounded by how often someone clicks something.
 - **Organizations, contacts and document references** (the rest of
   CLAUDE.md §17's Phase 3 list) are not built. Cases carry an
   `externalReference` string, which covers the common "their file number"

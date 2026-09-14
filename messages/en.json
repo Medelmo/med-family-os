@@ -129,7 +129,10 @@
     "unread": "Unread",
     "openTask": "Open task",
     "types": {
-      "taskAssigned": "You were made responsible for a task"
+      "taskAssigned": "You were made responsible for a task",
+      "taskFollowUpDue": "Time to follow up on a task",
+      "caseFollowUpDue": "Time to follow up on a case",
+      "deadlineApproaching": "A deadline is coming up"
     }
   },
   "cases": {

@@ -13,8 +13,13 @@ import styles from "./notifications.module.css";
  * rejects a literal dotted message key outright (INVALID_KEY). So the two
  * naming schemes are mapped here rather than one being bent to the other.
  */
-const TYPE_MESSAGE_KEYS: Record<string, "taskAssigned"> = {
+type NotificationMessageKey = "taskAssigned" | "taskFollowUpDue" | "caseFollowUpDue" | "deadlineApproaching";
+
+const TYPE_MESSAGE_KEYS: Record<string, NotificationMessageKey> = {
   "task.assigned": "taskAssigned",
+  "task.follow_up_due": "taskFollowUpDue",
+  "case.follow_up_due": "caseFollowUpDue",
+  "deadline.approaching": "deadlineApproaching",
 };
 
 export default async function NotificationsPage() {

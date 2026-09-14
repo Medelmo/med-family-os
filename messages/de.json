@@ -129,7 +129,10 @@
     "unread": "Ungelesen",
     "openTask": "Aufgabe öffnen",
     "types": {
-      "taskAssigned": "Sie wurden für eine Aufgabe zuständig gemacht"
+      "taskAssigned": "Sie wurden für eine Aufgabe zuständig gemacht",
+      "taskFollowUpDue": "Zeit, bei einer Aufgabe nachzufassen",
+      "caseFollowUpDue": "Zeit, bei einem Vorgang nachzufassen",
+      "deadlineApproaching": "Eine Frist steht an"
     }
   },
   "cases": {
