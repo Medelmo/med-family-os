@@ -99,3 +99,69 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  # CLAUDE.md §12: "dependency and container scanning". A separate job
+  # because it needs neither a database nor a browser, and because a
+  # failing scan should be legible on its own rather than buried at the end
+  # of a thirty-minute quality run.
+  #
+  # Both gates fail the build on HIGH and above and report everything else.
+  # The threshold is a judgement, and the judgement is that a gate which
+  # fires on things nobody can act on is a gate people learn to ignore.
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The advisory database moves without the lockfile changing, so this
+      # is the one gate that can start failing on a commit that altered
+      # nothing. That is the point of it.
+      #
+      # Its first run found a HIGH SQL-injection advisory against the
+      # pinned drizzle-orm, which is exactly the class of thing nobody
+      # notices by reading their own code.
+      - name: Dependency scan
+        run: pnpm scan:deps
+
+      # Scanning the image that actually ships, not the source tree: the
+      # base image's own packages are most of a container's attack surface
+      # and none of them appear in a lockfile.
+      - name: Build the image
+        run: docker build -t med-family-os:ci .
+
+      - name: Container scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: med-family-os:ci
+          format: table
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          # Unfixed findings are reported by the step above this one in
+          # the log but do not fail the build: there is nothing to do
+          # about a vulnerability with no available patch except choose a
+          # different base image, which is a deliberate decision and not
+          # something a red build should force at 2am.
+          ignore-unfixed: true
+          exit-code: "1"
+
+      # The same scan without the gate, so the unfixed findings are still
+      # visible to somebody deciding whether the base image is still the
+      # right one.
+      - name: Container scan (informational, including unfixed)
+        if: always()
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: med-family-os:ci
+          format: table
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: "0"

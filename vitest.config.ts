@@ -43,12 +43,17 @@ export default defineConfig({
           // Every integration file truncates the same development database
           // between cases, so running two of them at once deadlocks on the
           // TRUNCATE and fails with foreign-key violations from the other
-          // file's half-built fixtures. One fork keeps them serial.
-          // Separating the projects means the pure unit tests still run in
-          // parallel rather than paying for a constraint that is only the
-          // database's.
+          // file's half-built fixtures. Running them one file at a time
+          // keeps them serial. Separating the projects means the pure unit
+          // tests still run in parallel rather than paying for a
+          // constraint that is only the database's.
+          //
+          // `fileParallelism: false` rather than Vitest 3's
+          // `poolOptions.forks.singleFork`, which Vitest 5 removed. It is
+          // also the more honest spelling: the requirement is "do not run
+          // these files at the same time", not "use one fork".
           pool: "forks",
-          poolOptions: { forks: { singleFork: true } },
+          fileParallelism: false,
         },
       },
     ],

@@ -1,0 +1,63 @@
+# What must never enter the build context.
+#
+# Without this file the Dockerfile's `COPY . .` took the whole working
+# directory, which was wrong in two separate ways:
+#
+# 1. **`.env` went into the build layer.** It holds AUTH_SECRET, the
+#    database URL and CREDENTIAL_KEYS — the keys ADR-019 says must not be
+#    stored anywhere a database dump could reach, which applies at least as
+#    much to an image. Multi-stage builds mean it did not reach the final
+#    image, but "the secret is only in a layer nobody ships" is a property
+#    of the current Dockerfile rather than a decision, and it would stop
+#    being true the first time somebody added a stage or a `--target`.
+#
+# 2. **The host's `node_modules` overwrote the installed one.** `COPY . .`
+#    runs *after* `COPY --from=deps /app/node_modules`, so a developer who
+#    had ever run `pnpm install` locally shipped their own platform's
+#    modules into a Linux image. @node-rs/argon2 is a native binding, so
+#    the result would have been an image that built cleanly and could not
+#    hash a password.
+#
+# Everything here is either a secret, a build output, a local artefact, or
+# a thing the image does not need.
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+docker-compose.override.yml
+
+# Installed and built here instead
+node_modules
+.next
+*.tsbuildinfo
+
+# History and tooling the runtime has no use for
+.git
+.github
+.gitignore
+.claude
+
+# Tests, their output, and their configuration.
+#
+# The configs go too, not just the specs: `next build` typechecks the whole
+# project, and playwright.config.ts imports from tests/e2e/helpers — so
+# leaving the config while dropping the tests fails the build with a
+# missing-module error that has nothing to do with the application. Found
+# by building the image, which until now nobody had done.
+playwright-report
+test-results
+coverage
+tests
+playwright.config.ts
+vitest.config.ts
+
+# Documentation: read in the repository, not shipped in the image
+docs
+*.md
+!README.md
+
+# Editor and OS noise
+.DS_Store
+.vscode
+.idea

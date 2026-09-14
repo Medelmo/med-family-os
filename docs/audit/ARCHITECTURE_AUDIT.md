@@ -2378,3 +2378,141 @@ and the test predated it.
   and 5,000-entry caps fail loudly rather than degrading quietly.
 - **Attachment storage**, the "optionally" half of the contract's
   sentence. Reading links is the useful half and the safe one.
+
+## Dependency and container scanning, and what building the image found
+
+CLAUDE.md §12 lists "dependency and container scanning" among the Phase 1
+security baseline. It has been outstanding since Phase 1 — the longest-open
+item in the project — and closing it turned out to be worth more than a
+tick in a checklist.
+
+### The dependency gate found a high advisory on its first run
+
+`pnpm audit` immediately reported **GHSA-gpj5-g38j-94v9: SQL injection via
+improperly escaped SQL identifiers in drizzle-orm < 0.45.2**. The project
+pinned `^0.44.0`.
+
+This application is very unlikely to have been exploitable — identifiers
+come from schema objects, never from user input, and every value goes
+through a parameterised `sql` template. But "probably not reachable" is a
+reason it was not urgent, not a reason to stay on a vulnerable version of
+the library that touches every query in the app. Upgraded to 0.45.2; 697
+tests pass unchanged.
+
+Three moderates followed, all in dev tooling:
+
+- **vitest / @vitest/mocker** path traversal, needing ≥ 4.1.11. Upgraded
+  to 5.0.0, which removed `poolOptions`; the integration project's
+  `singleFork` became `fileParallelism: false` — a better spelling anyway,
+  since the requirement is "do not run these files at the same time", not
+  "use one fork". Without it the integration files ran in parallel against
+  one database and 243 tests failed on unique-key collisions, which is a
+  clear demonstration of what that setting was doing.
+- **esbuild** via drizzle-kit's deprecated `@esbuild-kit/esm-loader`, with
+  no upstream fix — drizzle-kit is already at its latest. Resolved with a
+  pinned `pnpm.overrides` entry forcing esbuild ≥ 0.25, verified by
+  running `drizzle-kit check` and `generate` afterwards.
+
+`pnpm audit` now reports nothing at any severity.
+
+### Building the image found three defects, because nobody had built it
+
+The Dockerfile has existed since Phase 0. **It had never produced an
+image.**
+
+1. **It did not build.** `infrastructure/db/client.ts` threw at import time
+   when `DATABASE_URL` was unset, and `next build` imports every route
+   module to collect its configuration. So building required a live
+   database URL — a runtime secret that a build stage has no business
+   holding, and that a correctly-configured pipeline would deny it. The
+   handle is now connected on first use through a Proxy, so no call site
+   changed; the same error still fires on first use, and `/api/ready`
+   reports it rather than the process dying on import, which is the better
+   failure: a container that exits before it can answer its readiness
+   endpoint tells an operator nothing.
+
+2. **It did not listen where it claimed to.** Next's standalone
+   `server.js` binds to `process.env.HOSTNAME`, and Docker sets that to
+   the container id — so the server listened only on the address that id
+   resolves to, not on `0.0.0.0` and not on loopback. Published ports
+   still worked, which is exactly why this would have survived: fine from
+   outside, unreachable from within, and its own healthcheck could never
+   pass. Found by adding a healthcheck and watching it sit at `starting`
+   forever.
+
+3. **It shipped the working directory.** There was no `.dockerignore`, so
+   `COPY . .` took `.env` — AUTH_SECRET, the database URL, CREDENTIAL_KEYS,
+   the keys ADR-019 says must never live where a dump could reach them —
+   into the build layer, and took the host's `node_modules` on top of the
+   Linux ones installed in the deps stage. @node-rs/argon2 is a native
+   binding, so an image built on a developer machine would have started
+   cleanly and been unable to hash a password.
+
+The image also ran as root, had no healthcheck, and carried npm and
+corepack that the standalone bundle never uses. All three are fixed.
+
+### The container gate, and what the threshold should be
+
+The first scan reported **69 HIGH/CRITICAL**. Where they were matters more
+than the number:
+
+- **11 in the base image's bundled npm** — tar, pacote, sigstore,
+  brace-expansion — none reachable by anything the container runs.
+  Deleting npm and corepack from the runtime stage removed all of them.
+  That is not gaming the scanner; it is the scanner correctly reporting
+  code with no business being in a runtime image.
+- **58 in Debian packages**, of which **2 had a fix**: a `libpcre2`
+  arbitrary-code-execution pair patched in Debian's archive but not yet in
+  the base tag. An `apt-get upgrade` in the runtime stage picks them up.
+  It costs byte-for-byte reproducibility, which is the right trade: a
+  build that reproduces exactly is worth less than one that is patched.
+
+That leaves the gate's threshold, which is a judgement: **fail on HIGH and
+above that have a fix available; report everything else**. There is nothing
+to do about a vulnerability with no patch except change base image — a
+decision to take deliberately, not one a red build should force at 2am —
+and a gate that fires on things nobody can act on is a gate people learn
+to pass by ignoring. The unfixed findings are printed by a second,
+non-gating scan so the decision can be taken with the evidence in view.
+
+The image now reports **zero fixable HIGH or CRITICAL findings**.
+
+### A gate that has only ever passed is untested
+
+Both gates were run against known-vulnerable inputs as well as clean ones,
+and the dependency gate failed that check the first time — for the wrong
+reason.
+
+`npm_execpath` is not always a JavaScript file: pnpm 12 through corepack
+points it at `pnpm-native.exe`, and `node pnpm-native.exe` dies with
+ERR_UNKNOWN_FILE_EXTENSION. The crash exits non-zero, so the gate
+"failed the build" on a vulnerable tree and looked like it was working.
+Only reading the output of a run that was *supposed* to fail showed that
+it had never reached the audit at all.
+
+A check that cannot tell a real finding from its own crash is not a check.
+Fixed by testing whether the exec path is a script before deciding how to
+invoke it; the gate now names the actual advisory when it fails.
+
+### Verified
+
+`tsc --noEmit`, `eslint .`, 697 unit and integration tests, `next build`,
+197 E2E tests, `pnpm scan` clean on both gates — and, for the first time,
+`docker build` followed by running the container: `/api/health` and
+`/api/ready` both answer, `/api/ready` reaches the database through the new
+lazy handle, and `docker inspect` reports `healthy`.
+
+### Not done
+
+- **CI has still never executed on a runner.** This repository has no
+  remote. The `scan` job is written to mirror `pnpm scan`, which *has*
+  been run, so the commands in it are known-good even though the workflow
+  is not.
+- **Base image choice.** Distroless would remove most of the 56 unfixed
+  Debian findings along with the shell. It would also change how the
+  healthcheck and any future debugging work, which is a deliberate trade
+  and belongs in its own ADR rather than in a scanning change.
+- **Automated rebuilds.** `apt-get upgrade` only helps when the image is
+  rebuilt. A household that builds once and runs for a year gets the
+  patches as of that day, which is worth saying out loud in the operations
+  notes.
