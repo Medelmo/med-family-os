@@ -21,6 +21,20 @@ import type { NextAuthConfig } from "next-auth";
  * because that always goes through the full auth().
  */
 export const authConfig = {
+  // Auth.js refuses to derive callback/session URLs from the request Host
+  // in production unless the host is explicitly trusted — without this,
+  // every authenticated route fails with `UntrustedHost` in a production
+  // build while working fine under `next dev`, which trusts localhost
+  // implicitly. (Found by running the real production build under the E2E
+  // suite; `next dev`, typecheck and unit tests all pass with it missing.)
+  //
+  // Trusting the host is correct *for this deployment model specifically*:
+  // docs/architecture/deployment.md puts the app behind a reverse proxy on
+  // a private network, publishing only the proxy-facing port, so the Host /
+  // X-Forwarded-Host header is set by infrastructure the household
+  // controls. The reverse proxy must therefore set Host correctly and not
+  // pass an attacker-supplied one through — see docs/security/security-model.md.
+  trustHost: true,
   pages: { signIn: "/login" },
   providers: [],
   callbacks: {

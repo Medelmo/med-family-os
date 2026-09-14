@@ -594,6 +594,65 @@ code was written and actually executed, each fixed on the spot:
    convention, then applied it (`git mv middleware.ts proxy.ts`) and
    re-verified the warning was gone.
 
+### Critical production-only bug found by adding E2E tests
+
+Writing the E2E suite meant running the app as a **production build** for
+the first time, which immediately surfaced a bug that `next dev`,
+`tsc`, ESLint, 31 unit/integration tests and a full manual browser
+walkthrough had all missed:
+
+```
+UntrustedHost: Host must be trusted. URL was: http://localhost:3000/api/auth/session
+```
+
+**Auth.js v5 refuses to derive session/callback URLs from the request host
+in production unless the host is explicitly trusted.** `next dev` trusts
+localhost implicitly, so authentication worked perfectly in development
+and failed completely in a production build — every sign-in silently
+returned the user to `/login`. This would have shipped to the household's
+self-hosted deployment and broken **all** authentication there.
+
+Fixed with `trustHost: true` in `infrastructure/auth/auth.config.ts`, which
+is the correct setting *for this deployment model specifically*
+(`docs/architecture/deployment.md`: app behind a reverse proxy on a private
+network, only the proxy-facing port published). The ADR-006-adjacent
+security consequence is documented in the config itself: the reverse proxy
+must set `Host`/`X-Forwarded-Host` itself and not pass an attacker-supplied
+value through.
+
+Two related findings came from the same exercise:
+
+- **`next start` does not work with `output: "standalone"`** (Next.js says
+  so itself at startup). The E2E suite was therefore about to test a
+  *different artifact* than the Dockerfile ships — precisely the gap that
+  let the `trustHost` bug hide. Added `scripts/serve-standalone.mjs`, which
+  assembles and runs the standalone bundle exactly as the Dockerfile's
+  COPY steps do, and pointed Playwright's `webServer` at it. **The E2E
+  suite now exercises the real deployment artifact.**
+- **`pg`, `@node-rs/argon2` and `pino` must be listed in
+  `serverExternalPackages`** — each uses a native binding or dynamic
+  require that Next's server bundler mangles.
+
+### A test-design decision worth recording
+
+The first green-ish run failed 8 specs because the suite tripped **the
+app's own sign-in rate limiter** (ADR-009: 5 attempts / 15 min / email) by
+re-authenticating in every test. The fix was to restructure the suite
+around Playwright's shared-storage-state pattern — a setup project performs
+the one-time bootstrap journey and saves the session; other specs reuse it;
+only specs genuinely *about* an auth transition sign in again, and the
+sign-out spec uses a second account so it doesn't revoke the shared
+session. Loosening the limiter for the tests' convenience was rejected:
+that would have weakened a real security control to make a test pass.
+
+This also improved `infrastructure/rate-limit/limiter.ts`, which had a
+genuine availability bug of its own: it treated *any* limiter rejection as
+"rate limited", so a limiter-infrastructure failure (store unreachable,
+driver error) would have locked every household member out of their own
+app. It now distinguishes a real breach (`RateLimiterRes` → deny) from an
+infrastructure failure (log at error level → allow through to password
+verification, which remains the primary control).
+
 ### Verification performed (not just claimed)
 
 - `pnpm typecheck` — clean.
@@ -637,10 +696,6 @@ code was written and actually executed, each fixed on the spot:
 - Full `Sidebar`/`MobileBottomNav` per `docs/design/design-system.md` —
   deferred until more than 2 nav destinations exist (documented in
   `components/app-shell/AppShell.module.css`).
-- E2E (Playwright) and accessibility (`@axe-core/playwright`) tests — the
-  config now exists (`playwright.config.ts`) but no spec files were
-  written yet; Vitest + a live browser smoke test covered this pass's
-  verification instead.
 - Module-boundary lint enforcement (§2) — not added; still a Medium
   finding for whenever more than one `features/*` module exists to have
   boundaries between.

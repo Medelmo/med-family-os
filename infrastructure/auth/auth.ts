@@ -36,13 +36,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = typeof credentials?.password === "string" ? credentials.password : undefined;
         if (!email || !password) return null;
 
-        try {
-          await consumeAuthAttempt(email);
-        } catch {
-          // Rate-limited: fail closed exactly like a wrong password, so the
-          // sign-in form can't distinguish "rate limited" from "wrong
-          // credentials" (docs/security/threat-model.md — don't leak which
-          // failure mode occurred).
+        // Fails closed exactly like a wrong password, so the sign-in form
+        // can't distinguish "rate limited" from "wrong credentials"
+        // (docs/security/threat-model.md — don't leak which failure mode
+        // occurred). A limiter *infrastructure* failure is not a breach and
+        // does not land here — see consumeAuthAttempt's own docstring.
+        if ((await consumeAuthAttempt(email)) === "rate_limited") {
           return null;
         }
 

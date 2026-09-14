@@ -1,5 +1,5 @@
 import { Pool } from "pg";
-import { RateLimiterPostgres, RateLimiterMemory } from "rate-limiter-flexible";
+import { RateLimiterPostgres, RateLimiterMemory, RateLimiterRes } from "rate-limiter-flexible";
 import { logger } from "../logging/logger";
 
 // ADR-009: a dedicated pg.Pool, separate from the Drizzle/postgres.js
@@ -31,7 +31,7 @@ function getAuthLimiter(): RateLimiterPostgres | RateLimiterMemory {
   const pool = getPool();
   if (!pool) {
     // No DATABASE_URL (e.g. a unit-test process importing this module
-    // indirectly): fail safe to an in-memory limiter rather than throwing,
+    // indirectly): fall back to an in-memory limiter rather than throwing,
     // since this module is imported by infrastructure/auth/auth.ts which
     // other modules may import transitively without ever calling the
     // limiter.
@@ -50,16 +50,38 @@ function getAuthLimiter(): RateLimiterPostgres | RateLimiterMemory {
   return authLimiter;
 }
 
+export type AuthAttemptOutcome = "allowed" | "rate_limited";
+
 /**
- * Throws (does not return false) when the limit is exceeded, matching
- * rate-limiter-flexible's own convention — callers must catch, not check a
- * boolean.
+ * Consumes one authentication attempt for `key`.
+ *
+ * Deliberately distinguishes the two failure modes CLAUDE.md §21 asks to
+ * keep apart, because conflating them is a real availability bug: a
+ * genuine limit breach must block the attempt, but a *limiter
+ * infrastructure* failure (store unreachable, table missing, driver
+ * error) must not — otherwise one broken dependency locks an entire
+ * household out of their own self-hosted app with no support desk to call.
+ *
+ * The password check in authorize() remains the primary control; this
+ * limiter is defense-in-depth against online guessing, so failing open on
+ * an infrastructure error (loudly, at error level) is the safer trade.
+ * rate-limiter-flexible signals a real breach by rejecting with a
+ * RateLimiterRes and an infrastructure problem by rejecting with an Error.
  */
-export async function consumeAuthAttempt(key: string): Promise<void> {
+export async function consumeAuthAttempt(key: string): Promise<AuthAttemptOutcome> {
   try {
     await getAuthLimiter().consume(key, 1);
+    return "allowed";
   } catch (rejection) {
-    logger.warn({ event: "auth.rate_limited" }, "sign-in rate limit exceeded");
-    throw rejection;
+    if (rejection instanceof RateLimiterRes) {
+      logger.warn({ event: "auth.rate_limited", msBeforeNext: rejection.msBeforeNext }, "sign-in rate limit exceeded");
+      return "rate_limited";
+    }
+
+    logger.error(
+      { event: "auth.rate_limiter_unavailable", err: rejection },
+      "rate limiter failed; allowing the attempt to proceed to password verification"
+    );
+    return "allowed";
   }
 }
