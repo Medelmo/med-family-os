@@ -1,0 +1,176 @@
+{
+  "designVersion": "1.0",
+  "breakpoints": {
+    "mobile": 390,
+    "tablet": 1024,
+    "desktop": 1440
+  },
+  "screens": [
+    {
+      "id": "dashboard",
+      "route": "/",
+      "purpose": "What needs attention",
+      "regions": [
+        "sidebar",
+        "topbar",
+        "attention-summary",
+        "today",
+        "deadlines",
+        "waiting",
+        "family-events",
+        "trips"
+      ]
+    },
+    {
+      "id": "inbox",
+      "route": "/inbox",
+      "purpose": "Triage captured items",
+      "regions": [
+        "filters",
+        "inbox-list",
+        "quick-triage-drawer"
+      ]
+    },
+    {
+      "id": "today",
+      "route": "/today",
+      "purpose": "Execute today's plan",
+      "regions": [
+        "date-header",
+        "tasks",
+        "events",
+        "deadlines",
+        "reminders"
+      ]
+    },
+    {
+      "id": "attention",
+      "route": "/attention",
+      "purpose": "Resolve important items",
+      "regions": [
+        "reason-filter",
+        "attention-list",
+        "next-action"
+      ]
+    },
+    {
+      "id": "cases",
+      "route": "/cases",
+      "purpose": "Manage real-world processes",
+      "regions": [
+        "search",
+        "filters",
+        "case-list",
+        "status-tabs"
+      ]
+    },
+    {
+      "id": "case-detail",
+      "route": "/cases/:id",
+      "purpose": "Case context and timeline",
+      "regions": [
+        "header",
+        "next-action",
+        "participants",
+        "timeline",
+        "tasks",
+        "documents",
+        "expenses"
+      ]
+    },
+    {
+      "id": "tasks",
+      "route": "/tasks",
+      "purpose": "Task management",
+      "regions": [
+        "filters",
+        "table-or-list",
+        "bulk-actions"
+      ]
+    },
+    {
+      "id": "calendar",
+      "route": "/calendar",
+      "purpose": "Schedule",
+      "regions": [
+        "month-week-day",
+        "event-list",
+        "filters"
+      ]
+    },
+    {
+      "id": "family",
+      "route": "/family",
+      "purpose": "People and relationships",
+      "regions": [
+        "people-grid",
+        "relationship-summary"
+      ]
+    },
+    {
+      "id": "finance",
+      "route": "/finance",
+      "purpose": "Household financial planning",
+      "regions": [
+        "summary",
+        "expenses",
+        "reimbursements",
+        "budgets"
+      ]
+    },
+    {
+      "id": "trips",
+      "route": "/trips",
+      "purpose": "Travel planning",
+      "regions": [
+        "upcoming",
+        "trip-list",
+        "readiness"
+      ]
+    },
+    {
+      "id": "assets",
+      "route": "/assets",
+      "purpose": "Durable household assets",
+      "regions": [
+        "asset-list",
+        "warranty-alerts",
+        "maintenance"
+      ]
+    },
+    {
+      "id": "search",
+      "route": "/search",
+      "purpose": "Global retrieval",
+      "regions": [
+        "search-box",
+        "filters",
+        "grouped-results"
+      ]
+    },
+    {
+      "id": "settings",
+      "route": "/settings",
+      "purpose": "Configuration",
+      "regions": [
+        "household",
+        "members",
+        "integrations",
+        "security",
+        "export"
+      ]
+    },
+    {
+      "id": "ha",
+      "route": "/ha",
+      "purpose": "Minimal Home Assistant view",
+      "regions": [
+        "critical",
+        "today",
+        "deadlines",
+        "events",
+        "trip"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "common": {
+    "appName": "Med Family OS"
+  },
+  "setup": {
+    "title": "Haushalt einrichten",
+    "description": "Hiermit werden das erste Konto und der Haushalt angelegt. Dies ist nur einmal möglich – danach werden neue Haushaltsmitglieder über die Einstellungen hinzugefügt.",
+    "householdNameLabel": "Name des Haushalts",
+    "ownerNameLabel": "Ihr Name",
+    "emailLabel": "E-Mail",
+    "passwordLabel": "Passwort",
+    "passwordHint": "Mindestens 12 Zeichen.",
+    "submit": "Haushalt erstellen",
+    "alreadySetUp": "Die Einrichtung wurde bereits abgeschlossen.",
+    "goToLogin": "Zur Anmeldung",
+    "errorAlreadySetUp": "Die Einrichtung wurde bereits abgeschlossen.",
+    "errorInvalidInput": "Bitte überprüfen Sie das Formular – etwas wurde nicht korrekt ausgefüllt.",
+    "errorUnknown": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+  },
+  "login": {
+    "title": "Anmelden",
+    "emailLabel": "E-Mail",
+    "passwordLabel": "Passwort",
+    "submit": "Anmelden",
+    "error": "E-Mail oder Passwort ist falsch."
+  },
+  "nav": {
+    "today": "Heute",
+    "family": "Familie",
+    "signOut": "Abmelden"
+  },
+  "home": {
+    "greeting": "Hallo, {name}",
+    "householdMembersCount": "{count, plural, =0 {Noch keine Haushaltsmitglieder} one {# Haushaltsmitglied} other {# Haushaltsmitglieder}}"
+  },
+  "family": {
+    "title": "Familie",
+    "addMember": "Haushaltsmitglied hinzufügen",
+    "noAccount": "Kein Zugang",
+    "roleLabel": "Rolle",
+    "displayNameLabel": "Name",
+    "emailLabel": "E-Mail (leer lassen für keinen Zugang)",
+    "temporaryPasswordLabel": "Vorläufiges Passwort",
+    "errorNotAuthorized": "Sie haben keine Berechtigung, Haushaltsmitglieder hinzuzufügen.",
+    "errorInvalidInput": "Bitte überprüfen Sie das Formular – etwas wurde nicht korrekt ausgefüllt."
+  }
+}

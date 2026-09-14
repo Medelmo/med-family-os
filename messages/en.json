@@ -1,0 +1,47 @@
+{
+  "common": {
+    "appName": "Med Family OS"
+  },
+  "setup": {
+    "title": "Set up your household",
+    "description": "This creates the first account and household. It is only available once — after this, new household members are added from Settings.",
+    "householdNameLabel": "Household name",
+    "ownerNameLabel": "Your name",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "passwordHint": "At least 12 characters.",
+    "submit": "Create household",
+    "alreadySetUp": "Setup has already been completed. Go to sign in.",
+    "goToLogin": "Go to sign in",
+    "errorAlreadySetUp": "Setup has already been completed.",
+    "errorInvalidInput": "Please check the form — something wasn't filled in correctly.",
+    "errorUnknown": "Something went wrong. Please try again."
+  },
+  "login": {
+    "title": "Sign in",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "submit": "Sign in",
+    "error": "Incorrect email or password."
+  },
+  "nav": {
+    "today": "Today",
+    "family": "Family",
+    "signOut": "Sign out"
+  },
+  "home": {
+    "greeting": "Hello, {name}",
+    "householdMembersCount": "{count, plural, =0 {No household members yet} one {# household member} other {# household members}}"
+  },
+  "family": {
+    "title": "Family",
+    "addMember": "Add household member",
+    "noAccount": "No login",
+    "roleLabel": "Role",
+    "displayNameLabel": "Name",
+    "emailLabel": "Email (leave blank for no login)",
+    "temporaryPasswordLabel": "Temporary password",
+    "errorNotAuthorized": "You don't have permission to add household members.",
+    "errorInvalidInput": "Please check the form — something wasn't filled in correctly."
+  }
+}

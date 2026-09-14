@@ -1,0 +1,77 @@
+/*
+ * docs/design/design-system.md specifies a full Sidebar + MobileBottomNav
+ * for the eventual ~13-item primary nav (screen-inventory.md). Phase 1
+ * only ships two destinations (Dashboard, Family), so this is a single
+ * responsive top bar rather than that full component — building the
+ * sidebar/bottom-nav shell now, before there's anything to navigate to,
+ * would be exactly the "infrastructure merely for fashion" CLAUDE.md §14
+ * warns against. Replace this with the full Sidebar/MobileBottomNav
+ * components in components/ui when more nav items ship (tracked
+ * implicitly by docs/implementation/roadmap.md's phase list).
+ */
+
+.shell {
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+  padding: var(--space-4) var(--space-6);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.appName {
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-line);
+  font-weight: 700;
+}
+
+.nav {
+  display: flex;
+  gap: var(--space-4);
+  flex: 1;
+}
+
+.navLink {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  font-weight: 600;
+  padding: var(--space-2) 0;
+}
+
+.navLink:hover,
+.navLink:focus-visible {
+  color: var(--color-text-primary);
+}
+
+.userArea {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.userName {
+  font-size: var(--text-compact-size);
+  color: var(--color-text-secondary);
+}
+
+.content {
+  padding: var(--space-6);
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+@media (max-width: 600px) {
+  .topBar {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .content {
+    padding: var(--space-4);
+  }
+}
