@@ -582,5 +582,29 @@
     "integrations": "Integrationen",
     "integrationsHint": "Verbindungen zu Paperless, Nextcloud und anderen.",
     "nothingForYou": "Für deine Rolle gibt es hier noch nichts."
+  },
+  "links": {
+    "related": "Zusammenhänge",
+    "noneYet": "Noch nichts verknüpft.",
+    "linkLabel": "Verknüpfen mit",
+    "noteLabel": "Warum gehört das zusammen? (optional)",
+    "noteHint": "Eine Zeile für den, der das als Nächstes liest.",
+    "link": "Verknüpfen",
+    "unlinkNamed": "{label} trennen",
+    "nothingToLink": "Noch nichts zum Verknüpfen vorhanden.",
+    "errorSelfLink": "Ein Eintrag kann nicht mit sich selbst verknüpft werden.",
+    "errorNotFound": "Diesen Eintrag gibt es nicht, oder er gehört nicht dir.",
+    "errorNotAuthorized": "Dazu fehlt dir die Berechtigung.",
+    "errorInvalidInput": "Bitte die Angaben prüfen und erneut versuchen.",
+    "type": {
+      "case": "Vorgang",
+      "task": "Aufgabe",
+      "expense": "Ausgabe",
+      "reimbursement": "Erstattung",
+      "trip": "Reise",
+      "asset": "Besitz",
+      "document": "Dokument"
+    },
+    "unlink": "Trennen"
   }
 }

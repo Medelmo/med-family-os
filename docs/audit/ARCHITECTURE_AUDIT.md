@@ -1915,3 +1915,88 @@ catastrophic.
   work deferred since Phase 3. It is now the most-deferred item in the
   project and should be the next thing built.
 - **Manual document references.** Supported by the schema, no UI.
+
+---
+
+## Context links: the most-deferred item, finally built
+
+`docs/domain/erd.md` has modelled `CASE contextualizes DOCUMENT_REFERENCE`
+since Phase 0, and the same need appeared in every phase since — an
+expense that belongs to a case, a document that justifies a claim, a trip
+a booking confirmation belongs to. It had been deferred since Phase 3.
+**ADR-021** records the decisions.
+
+### The rule that matters
+
+**A link is visible only if the actor may read the record at the *other*
+end** — not the one they are looking at.
+
+Without that, linking is a side door around every sensitivity rule in the
+application: a `NORMAL` case linked to a `SENSITIVE` document would tell a
+child account that the document exists and what it is called, which is
+most of what the sensitivity was protecting. `resolveRecords` runs every
+far end through the policy kernel with the same inputs that record's own
+list query uses, and an unresolved end is simply not returned.
+
+Creating and removing a link require the same, and an unreadable record is
+reported as **not found rather than forbidden**: for the far end of a
+link, a refusal that distinguishes the two is a way to test whether
+something exists.
+
+### A bug caught before it could exist
+
+Storage is canonical — the pair is sorted into a fixed order so "document
+linked to case" and "case linked to document" are one row and a unique
+index can prevent duplicates.
+
+The first version sorted by comparing type names as strings. PostgreSQL
+compares enum values by **declaration order**, and the table has a `CHECK`
+enforcing canonical ordering — so the two would have disagreed for any
+pair whose alphabetical and declared orders differ. `task` and `expense`
+are exactly such a pair, and every task-expense link would have been
+rejected by the constraint with an error nobody would have connected to
+sort order.
+
+I noticed it while writing the comment claiming the two agreed. Ranking by
+index into `LINKABLE_TYPES` makes them the same definition, and a test
+walks every pair of types asserting the TypeScript order matches the
+declared one.
+
+### Two UI defects, fixed at their source
+
+Both were found by the case detail page's own horizontal-overflow guard,
+on mobile only, and neither is specific to links:
+
+- **`TextField.module.css` gave fields no `max-width`.** A `<select>`
+  sizes itself to its widest option, so a long record description in the
+  link picker pushed the page 24px past a 412px phone. Every select in the
+  app — finance categories, trip participants, asset categories,
+  integration providers — had this latent; none had an option long enough
+  to expose it.
+- **The unlink button rendered the full record name**, so a screen reader
+  would hear which of several it removes rather than five identical
+  "Unlink" buttons. That made the button 395px wide. It now shows "Unlink"
+  and carries the full name as its accessible name, which still satisfies
+  WCAG 2.2 SC 2.5.3 because the accessible name begins with the visible
+  word.
+
+The first fix only moved the overflow from 24px to 22px, which is what
+prompted actually measuring rather than guessing again — a throwaway probe
+that walked the DOM and reported every element extending past the viewport
+found the button in one run.
+
+### Verified
+
+`tsc --noEmit`, `eslint .`, 588 unit and integration tests, `next build`,
+and 169 E2E tests (2 skipped by project gate) against the standalone
+bundle.
+
+### Not done
+
+- **Linking from anywhere but a case.** The mechanism is type-agnostic, so
+  adding it to a trip, an asset or a claim is a section on that page
+  rather than new schema.
+- **Search.** The picker is bounded per type and recent-first, which is
+  right for "the thing I was just looking at" and wrong for a household
+  with three years of documents. Screen 44 in the inventory is Search, and
+  it is now the obvious next gap.

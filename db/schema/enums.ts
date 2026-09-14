@@ -28,6 +28,19 @@ export const inboxItemStatusEnum = pgEnum("inbox_item_status", ["UNTRIAGED", "TR
 // inspection rather than looping forever (ADR-013).
 export const outboxStatusEnum = pgEnum("outbox_status", ["PENDING", "PROCESSED", "FAILED"]);
 
+// Mirrors LINKABLE_TYPES in domain/links/recordLink.ts. Note the enum
+// ordering is also the canonical ordering links are stored in, so adding
+// a value at the end never re-sorts existing rows.
+export const linkableTypeEnum = pgEnum("linkable_type", [
+  "case",
+  "task",
+  "expense",
+  "reimbursement",
+  "trip",
+  "asset",
+  "document",
+]);
+
 // Mirrors domain/integrations/syncRun.ts. PARTIAL is the interesting one:
 // a run that imported eleven documents and choked on the twelfth has done
 // real work and has also not finished.

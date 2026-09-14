@@ -582,5 +582,29 @@
     "integrations": "Integrations",
     "integrationsHint": "Connections to Paperless, Nextcloud and the rest.",
     "nothingForYou": "There is nothing here for your role yet."
+  },
+  "links": {
+    "related": "Related",
+    "noneYet": "Nothing linked yet.",
+    "linkLabel": "Link to",
+    "noteLabel": "Why are they related? (optional)",
+    "noteHint": "A line for whoever reads this next.",
+    "link": "Link it",
+    "unlinkNamed": "Unlink {label}",
+    "nothingToLink": "Nothing to link to yet.",
+    "errorSelfLink": "A record cannot be linked to itself.",
+    "errorNotFound": "That record is not there, or is not yours to link.",
+    "errorNotAuthorized": "You are not permitted to do that.",
+    "errorInvalidInput": "Check the details and try again.",
+    "type": {
+      "case": "Case",
+      "task": "Task",
+      "expense": "Expense",
+      "reimbursement": "Claim",
+      "trip": "Trip",
+      "asset": "Asset",
+      "document": "Document"
+    },
+    "unlink": "Unlink"
   }
 }

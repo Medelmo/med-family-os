@@ -4,7 +4,10 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import { requireActor } from "../../../../infrastructure/auth/currentActor";
 import { getCase } from "../../../../application/queries/cases/getCases";
 import { AuthorizationError, NotFoundError } from "../../../../application/errors";
+import { getLinksFor } from "../../../../application/commands/links/linkRecords";
+import { getLinkCandidates } from "../../../../application/links/linkCandidates";
 import { AddNoteForm, CaseActions, NextActionForm, type CaseStatusName } from "./CaseDetailClient";
+import { LinkRecordForm, UnlinkForm } from "./LinksClient";
 import { Card } from "../../../../components/ui/Card";
 import styles from "./caseDetail.module.css";
 
@@ -24,6 +27,12 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ cas
     if (error instanceof NotFoundError || error instanceof AuthorizationError) notFound();
     throw error;
   }
+
+  const tLinks = await getTranslations("links");
+  const [links, candidates] = await Promise.all([
+    getLinksFor(actor, householdId, { type: "case", id: caseId }),
+    getLinkCandidates(actor, householdId),
+  ]);
 
   return (
     <div className={styles.page}>
@@ -100,6 +109,38 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ cas
             ))}
           </ul>
         )}
+      </Card>
+
+      {/* What else this case is about. A link is shown only when its far
+          end is readable by this actor — see resolveRecords — so a case
+          can carry a link to something the reader is not told exists. */}
+      <Card>
+        <h2 className={styles.sectionTitle}>{tLinks("related")}</h2>
+
+        {links.length === 0 ? (
+          <p className={styles.metaText}>{tLinks("noneYet")}</p>
+        ) : (
+          <ul className={styles.linkList}>
+            {links.map((link) => (
+              <li key={link.linkId} className={styles.linkItem}>
+                <span className={styles.linkLabel}>
+                  <span className={styles.linkType}>{tLinks(`type.${link.type}`)}</span>{" "}
+                  {link.href ? <Link href={link.href}>{link.label}</Link> : link.label}
+                  {link.note && <span className={styles.metaText}> · {link.note}</span>}
+                </span>
+                <UnlinkForm caseId={detail.id} linkId={link.linkId} label={link.label} />
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <LinkRecordForm
+          caseId={detail.id}
+          options={candidates.map((candidate) => ({
+            value: `${candidate.type}:${candidate.id}`,
+            label: `${tLinks(`type.${candidate.type}`)} · ${candidate.label}`,
+          }))}
+        />
       </Card>
 
       <Card>

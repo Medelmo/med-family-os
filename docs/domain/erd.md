@@ -35,6 +35,15 @@ erDiagram
   HOUSEHOLD ||--o{ OUTBOX_EVENT : queues
 ```
 
+### Context links
+
+`CASE }o--o{ DOCUMENT_REFERENCE` is implemented by a single generic
+`record_link` table rather than a join table per pair — the same need
+applies to expenses, trips, assets, tasks and claims, and twenty-one join
+tables would be twenty-one authorization paths. See ADR-021; the rule that
+matters is that a link is visible only if the actor may read the record at
+the *other* end.
+
 ### Database constraints
 
 - every household-owned row has a non-null householdId

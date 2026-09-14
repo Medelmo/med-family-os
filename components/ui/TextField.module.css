@@ -22,6 +22,14 @@
   border-radius: var(--radius-sm);
   padding: var(--space-3);
   min-height: 44px;
+  /* A <select> sizes itself to its widest option, so a long one pushes the
+     field — and the page — wider than the screen. A text input never does
+     this, which is why it went unnoticed until a picker held a record's
+     full description: 24px of horizontal overflow on a 375px viewport,
+     caught by the case detail page's own overflow guard.
+     `min-width: 0` also lets the field shrink inside a flex column. */
+  min-width: 0;
+  max-width: 100%;
 }
 
 .input[aria-invalid="true"] {
