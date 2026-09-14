@@ -98,8 +98,15 @@ Paperless.
     deliberately outside the app shell and outside the navigation: it is a
     target for a dashboard embed, not a destination people browse to. It
     carries counts and dates only, never free text (ADR-018).
-48. Export
-49. Backup/restore status
+48. Export — `/settings/export`, with the download itself at
+    `GET /api/export`. Built. The bundle is filtered through the same
+    policy kernel as the screens it comes from, so an export is "what you
+    can see" and never "the database" (ADR-025).
+49. Backup/restore status — `/settings/backup`. Built, and deliberately
+    reports only what this application can actually know: row counts per
+    table, the schema version, the size on disk, the last export. It does
+    not take the backups and says so rather than showing a tick it cannot
+    justify.
 
 ## Required responsive states
 

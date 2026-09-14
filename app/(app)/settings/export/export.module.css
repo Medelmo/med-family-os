@@ -1,0 +1,62 @@
+.subtitle {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-line);
+}
+
+/* Tables are the one thing allowed to scroll sideways rather than squash,
+   and this one has two columns, so it will not need to. */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--space-4);
+}
+
+.caption {
+  text-align: left;
+  color: var(--color-text-secondary);
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+  margin-bottom: var(--space-2);
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+  font-weight: 400;
+}
+
+.table thead th {
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.numeric {
+  text-align: right;
+  /* Digits line up column-wise, so two counts can be compared at a glance
+     without reading them. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* Warning, not error: nothing has gone wrong. The left rule carries the
+   emphasis rather than colour alone, so it survives a monochrome screen
+   and does not rely on hue to be noticed (WCAG 1.4.1). */
+.warning {
+  margin: 0 0 var(--space-3);
+  padding-left: var(--space-3);
+  border-left: 3px solid var(--color-warning, var(--color-border-strong));
+  color: var(--color-text-primary);
+}
+
+.download {
+  display: inline-block;
+  font-weight: 600;
+  /* A link, but the page's main action, so it gets a target size to match
+     (WCAG 2.2 SC 2.5.8). */
+  min-height: 44px;
+  line-height: 44px;
+}

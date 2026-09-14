@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { requireActor } from "../../../infrastructure/auth/currentActor";
 import { authorizeIntegrationAccess } from "../../../application/policies/integrations";
+import { authorizeHouseholdSettingsAccess } from "../../../application/policies/household";
 import { Card } from "../../../components/ui/Card";
 import styles from "./settings.module.css";
 
@@ -23,6 +24,16 @@ export default async function SettingsPage() {
   const t = await getTranslations("settings");
 
   const canManageIntegrations = authorizeIntegrationAccess(actor, householdId);
+  const canSeeBackup = authorizeHouseholdSettingsAccess(actor, "read", householdId);
+
+  const entries = [
+    canManageIntegrations && { href: "/settings/integrations", label: "integrations", hint: "integrationsHint" },
+    // Offered to everybody, deliberately. An export is the one thing on
+    // this page that is not administration: it is a person taking their
+    // own data, and it gives each of them exactly what they can see.
+    { href: "/settings/export", label: "export", hint: "exportHint" },
+    canSeeBackup && { href: "/settings/backup", label: "backup", hint: "backupHint" },
+  ].filter(Boolean) as { href: string; label: string; hint: string }[];
 
   return (
     <div className={styles.page}>
@@ -33,17 +44,19 @@ export default async function SettingsPage() {
 
       <Card>
         <ul className={styles.list}>
-          {canManageIntegrations ? (
-            <li className={styles.row}>
-              <Link href="/settings/integrations" className={styles.link}>
-                {t("integrations")}
-              </Link>
-              <span className={styles.meta}>{t("integrationsHint")}</span>
-            </li>
-          ) : (
+          {entries.length === 0 ? (
             <li className={styles.row}>
               <span className={styles.meta}>{t("nothingForYou")}</span>
             </li>
+          ) : (
+            entries.map((entry) => (
+              <li className={styles.row} key={entry.href}>
+                <Link href={entry.href} className={styles.link}>
+                  {t(entry.label)}
+                </Link>
+                <span className={styles.meta}>{t(entry.hint)}</span>
+              </li>
+            ))
           )}
         </ul>
       </Card>

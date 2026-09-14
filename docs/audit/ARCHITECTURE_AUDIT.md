@@ -2516,3 +2516,120 @@ lazy handle, and `docker inspect` reports `healthy`.
   rebuilt. A household that builds once and runs for a year gets the
   patches as of that day, which is worth saying out loud in the operations
   notes.
+
+## Export and backup status: the last two screens, and an over-grant they found
+
+Screens 48 and 49 have been in `docs/design/screen-inventory.md` since
+Phase 0 and were the last unbuilt views in it. **ADR-025** records the
+decisions.
+
+### An export is the place a policy mistake becomes total
+
+Every other screen in this application leaks one record at a time, and
+only to somebody who goes looking. An export is one click, one file, all
+of it. An export that read rows directly would be the most complete
+authorization bypass the application could contain, wearing the friendly
+name "Export".
+
+So `buildExport` passes every row through the same per-aggregate policy
+function its own list page uses, and the bundle is *what this actor can
+see* — never "the database". A child's export is small; that is correct
+rather than broken, and the file says so in its own `scope` field, because
+a file outlives the page that made it.
+
+Three narrower rules come from the same principle: children of a record go
+only when the parent goes (a warranty belongs to its asset and has no
+visibility of its own); a link is exported only when both ends are (ADR-021's
+rule, for ADR-021's reason); and the omitted columns are a deny-list rather
+than an allow-list, because an allow-list would silently drop every future
+column somebody forgot.
+
+### The over-grant it found
+
+`docs/permissions.md` has said "Finance | Viewer | none by default" since
+Phase 0. `canAccess` applies a sensitivity ceiling to **CHILD only**, and a
+VIEWER passes straight through on any read — so a viewer could see every
+expense and claim in the household. A viewer is the carer, the relative,
+the account somebody is given so they can see the calendar.
+
+It had gone unnoticed because nothing made it visible: a viewer had to go
+and look at the finance page. That is the pattern worth recording —
+**an export is where a quiet over-grant stops being quiet**, because it
+turns per-record access into one file containing all of it.
+
+Fixed in `authorizeExpenseAccess` and `authorizeBudgetAccess`. An existing
+integration test asserted the old behaviour ("lets a viewer read but not
+write") and had to be changed: it encoded what the kernel happened to do
+rather than what the matrix said. That is worth flagging as a behaviour
+change, not just a fix — a household that gave someone a VIEWER account
+expecting them to see finance will find they no longer can, which is what
+the documented default has always specified.
+
+### A backup page that refuses to show a tick
+
+This application does not take the backups. A "Backups: healthy" badge for
+a job it cannot observe would be the most dangerous thing on the page — a
+reassurance with nothing behind it, believed precisely until the day it
+mattered.
+
+So the page reports only what it can know, and that turns out to be
+exactly what the restore drill asks for: rows and newest timestamp per
+table, schema version, size on disk, last export. Noted before a restore,
+they turn "it seems to have worked" into a check. Alongside them is what
+the household must back up, with the one mistake that looks entirely
+correct until the dump is stolen given its own emphasis: `CREDENTIAL_KEYS`
+must not live where the database backup lives, or the encryption protects
+nothing against the attacker holding both.
+
+Access is owner/admin, stricter than the "Household settings" row an adult
+has read access to. Everything on the page is a read of the whole
+household, and "there are 14 documents" told to somebody who can open
+three is the aggregate form of the enumeration search and links both
+prevent. `docs/permissions.md` now carries its own rows for Backup status
+and Export.
+
+### A catch that turned a bug into a confident wrong number
+
+The first version of the backup page listed the tables to count as typed
+strings. Two were wrong: the cases table is `household_case` — `case` is a
+reserved word — and there is no `note` table at all. Both queries threw,
+and a `catch` pushed `rows: 0`, so the page told a household with cases in
+it that it had none.
+
+On a page whose entire purpose is verifying a restore, that is worse than
+no page. Two changes: the list is now the schema objects rather than their
+names, so the names cannot be mistyped or go stale through a rename; and a
+failed count reports **null**, rendered as "Not available", because "I
+could not count this" and "there are none" must never look the same.
+
+Found by a test asserting a count of 1, which is the only reason it was
+found at all — the page looked entirely plausible.
+
+### One more test that passed for a bad reason
+
+The first E2E asserted the export page showed a "Cases" row. It passed,
+because the case journey happens to run before the export journey. Run on
+its own, it failed. Changed to assert the "People" row, which the setup
+project guarantees: a test that depends on another spec file's leftovers
+is one that fails the day somebody runs it alone.
+
+### Verified
+
+`tsc --noEmit`, `eslint .`, 711 unit and integration tests (14 new),
+`next build`, and 215 E2E tests across desktop and mobile (11 new,
+including downloading the real file, parsing it, and checking its
+response headers), with axe checks on both new pages and both in the
+horizontal-overflow list. Both pages were looked at on a phone.
+
+### Not done
+
+- **Import.** The bundle carries a `formatVersion` so a future importer
+  can tell what it is reading, but nothing reads one back. Restoring from
+  an export would need conflict rules — what happens when a record exists
+  already — which is a design question, not an afternoon.
+- **Encrypting the export.** It is deliberately plain, so it can be read
+  without this application or any key. The page says so before the
+  download rather than after.
+- **A restore drill actually run.** The page now supplies the numbers the
+  drill compares; the drill itself needs the household's own backup, which
+  this repository does not have.

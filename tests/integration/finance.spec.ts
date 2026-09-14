@@ -381,12 +381,27 @@ describe("who may see the household's money", () => {
     await expect(anExpense(child.actor, householdId)).rejects.toBeInstanceOf(AuthorizationError);
   });
 
-  it("lets a viewer read but not write", async () => {
+  /**
+   * Changed when the export was built, and worth recording why.
+   *
+   * This test used to assert that a viewer could *read* expenses. It was
+   * encoding what `canAccess` happened to do — the kernel applies a
+   * sensitivity ceiling to CHILD only, so a VIEWER passed straight through
+   * on any read — rather than what `docs/permissions.md` has always said,
+   * which is "Finance | Viewer | none by default".
+   *
+   * Nothing made the gap visible while a viewer had to go and look at the
+   * finance page for themselves. An export is where it stopped being
+   * quiet: one file, containing the household's entire financial history,
+   * handed to the account somebody was given so they could see the
+   * calendar.
+   */
+  it("gives a viewer no finance at all", async () => {
     const { householdId, actor } = await household();
     await anExpense(actor, householdId);
 
     const viewer: Actor = { userId: actor.userId, householdId, role: "VIEWER", personIds: [] };
-    expect(await getExpensesForMonth(viewer, householdId, MARCH)).toHaveLength(1);
+    expect(await getExpensesForMonth(viewer, householdId, MARCH)).toEqual([]);
     await expect(anExpense(viewer, householdId)).rejects.toBeInstanceOf(AuthorizationError);
   });
 
