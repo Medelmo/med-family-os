@@ -35,7 +35,8 @@
     "signOut": "Sign out",
     "notifications": "Notifications",
     "unreadCount": "{count, plural, one {# unread} other {# unread}}",
-    "cases": "Cases"
+    "cases": "Cases",
+    "calendar": "Calendar"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -106,7 +107,9 @@
     "waitingSection": "Waiting on someone",
     "deadlinesSection": "Deadlines reached",
     "empty": "Nothing is due today. Nothing is overdue.",
-    "waitingSince": "Waiting since {date}"
+    "waitingSince": "Waiting since {date}",
+    "eventsSection": "Today's events",
+    "allDayEvent": "All day"
   },
   "attention": {
     "title": "Attention",
@@ -184,6 +187,28 @@
     "errorBlockingReasonRequired": "Say what is blocking the case.",
     "errorConflict": "This case was changed by someone else. Reload and try again.",
     "errorNotAuthorized": "You don't have permission to change this case.",
+    "errorInvalidInput": "Please check the form — something wasn't filled in correctly."
+  },
+  "calendar": {
+    "title": "Calendar",
+    "description": "What is coming up in the next {days} days.",
+    "empty": "Nothing scheduled.",
+    "addEvent": "Add an event",
+    "titleLabel": "What is happening?",
+    "dateLabel": "Date",
+    "timeLabel": "Time",
+    "locationLabel": "Where (optional)",
+    "repeatLabel": "Repeats",
+    "repeats": "repeats",
+    "allDay": "All day",
+    "repeat": {
+      "NONE": "Once",
+      "DAILY": "Every day",
+      "WEEKLY": "Every week",
+      "MONTHLY": "Every month",
+      "YEARLY": "Every year"
+    },
+    "errorNotAuthorized": "You don't have permission to add events.",
     "errorInvalidInput": "Please check the form — something wasn't filled in correctly."
   }
 }

@@ -1,13 +1,13 @@
 /*
  * docs/design/design-system.md specifies a full Sidebar + MobileBottomNav
- * for the eventual ~13-item primary nav (screen-inventory.md). Phase 1
- * only ships two destinations (Dashboard, Family), so this is a single
- * responsive top bar rather than that full component — building the
- * sidebar/bottom-nav shell now, before there's anything to navigate to,
- * would be exactly the "infrastructure merely for fashion" CLAUDE.md §14
- * warns against. Replace this with the full Sidebar/MobileBottomNav
- * components in components/ui when more nav items ship (tracked
- * implicitly by docs/implementation/roadmap.md's phase list).
+ * for the eventual ~13-item primary nav (screen-inventory.md). This is
+ * still a single responsive top bar, which was the right call at two
+ * destinations and is becoming the wrong one at eight: a wrapping nav
+ * costs real vertical space on a phone, and the design system's answer to
+ * that is the bottom nav. That replacement is the outstanding design-system
+ * debt for the next UI-facing phase — recorded in
+ * docs/audit/ARCHITECTURE_AUDIT.md rather than left as a comment nobody
+ * reads.
  */
 
 .shell {
@@ -35,6 +35,13 @@
   display: flex;
   gap: var(--space-4);
   flex: 1;
+  /* Wrapping is load-bearing, not cosmetic: without it eight destinations
+     in a row are wider than a 375px phone, the whole page gains a
+     horizontal scrollbar, and taps start landing on the wrong element.
+     docs/design/implementation-handoff.md: "Never horizontally scroll
+     primary content." Guarded by a test in tests/e2e/accessibility.spec.ts. */
+  flex-wrap: wrap;
+  row-gap: var(--space-2);
 }
 
 .navLink {

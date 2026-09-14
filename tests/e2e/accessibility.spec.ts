@@ -37,11 +37,34 @@ test.describe("signed in", () => {
     await expectNoViolations(page);
   });
 
+  test("calendar page has no automatically detectable WCAG violations", async ({ page }) => {
+    await page.goto("/calendar");
+    await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
+    await expectNoViolations(page);
+  });
+
   test("family page has no automatically detectable WCAG violations", async ({ page }) => {
     await page.goto("/family");
     await expect(page.getByRole("heading", { name: "Family" })).toBeVisible();
     await expectNoViolations(page);
   });
+
+  // docs/design/implementation-handoff.md: "Never horizontally scroll
+  // primary content." This caught a real regression: the nav was a
+  // non-wrapping flex row, so each new destination pushed the page wider
+  // until, at eight, a phone viewport overflowed and taps began landing on
+  // the wrong element.
+  for (const path of ["/today", "/calendar", "/cases", "/inbox"]) {
+    test(`${path} does not scroll horizontally`, async ({ page }) => {
+      await page.goto(path);
+      const overflow = await page.evaluate(() => ({
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+      }));
+      // A pixel of tolerance for sub-pixel rounding.
+      expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
+    });
+  }
 
   test("primary navigation is reachable and operable by keyboard alone", async ({ page }) => {
     await page.goto("/today");

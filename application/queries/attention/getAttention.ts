@@ -3,7 +3,9 @@ import { db } from "../../../infrastructure/db/client";
 import { deadlines } from "../../../db/schema";
 import { getHouseholdTimezone, getTasks, type TaskListItem } from "../tasks/getTasks";
 import { getCases, type CaseListItem } from "../cases/getCases";
+import { getCalendarOccurrences, type CalendarOccurrence } from "../calendar/getCalendarEvents";
 import { householdToday } from "../../time";
+import { wallClockToInstant } from "../../../domain/calendar/timezone";
 import {
   projectAttention,
   toIsoDate,
@@ -110,6 +112,7 @@ export interface TodayView {
   dueToday: TaskListItem[];
   waiting: TaskListItem[];
   deadlines: { id: string; title: string; dueOn: Date }[];
+  events: CalendarOccurrence[];
 }
 
 /**
@@ -146,6 +149,12 @@ export async function getToday(actor: Actor, householdId: string, now: Date = ne
     .orderBy(asc(deadlines.dueOn))
     .limit(100);
 
+  // The household's own day, in its own timezone — not a rolling 24h from
+  // "now", which would spill tomorrow morning's events into tonight.
+  const dayStart = wallClockToInstant({ year: Number(todayIso.slice(0, 4)), month: Number(todayIso.slice(5, 7)), day: Number(todayIso.slice(8, 10)), hour: 0, minute: 0 }, timezone);
+  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
+  const events = await getCalendarOccurrences(actor, householdId, dayStart, dayEnd);
+
   const visibleDeadlines = deadlineRows
     .filter((row) =>
       canAccess(actor, "read", {
@@ -157,5 +166,5 @@ export async function getToday(actor: Actor, householdId: string, now: Date = ne
     )
     .map((row) => ({ id: row.id, title: row.title, dueOn: row.dueOn }));
 
-  return { todayIso, dueToday, waiting, deadlines: visibleDeadlines };
+  return { todayIso, dueToday, waiting, deadlines: visibleDeadlines, events };
 }

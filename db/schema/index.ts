@@ -7,4 +7,5 @@ export * from "./inbox";
 export * from "./task";
 export * from "./deadline";
 export * from "./case";
+export * from "./calendar";
 export * from "./outbox";

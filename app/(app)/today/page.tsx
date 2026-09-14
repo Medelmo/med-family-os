@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server";
+import { getFormatter, getTranslations } from "next-intl/server";
 import { requireActor } from "../../../infrastructure/auth/currentActor";
 import { getToday } from "../../../application/queries/attention/getAttention";
 import { TaskCard } from "../../../components/tasks/TaskCard";
@@ -24,9 +24,10 @@ export default async function TodayPage() {
   const { actor, householdId, userName } = await requireActor();
   const t = await getTranslations("today");
   const tHome = await getTranslations("home");
-  const { dueToday, waiting, deadlines } = await getToday(actor, householdId);
+  const format = await getFormatter();
+  const { dueToday, waiting, deadlines, events } = await getToday(actor, householdId);
 
-  const isEmpty = dueToday.length === 0 && waiting.length === 0 && deadlines.length === 0;
+  const isEmpty = dueToday.length === 0 && waiting.length === 0 && deadlines.length === 0 && events.length === 0;
 
   return (
     <div className={styles.page}>
@@ -39,6 +40,26 @@ export default async function TodayPage() {
         <Card>
           <p className={styles.empty}>{t("empty")}</p>
         </Card>
+      )}
+
+      {events.length > 0 && (
+        <section>
+          <h2 className={styles.sectionTitle}>{t("eventsSection")}</h2>
+          <ul className={styles.list}>
+            {events.map((event) => (
+              <li key={`${event.eventId}-${event.startsAt.toISOString()}`}>
+                <Card>
+                  <strong>{event.title}</strong>
+                  <p className={styles.meta}>
+                    {event.allDay
+                      ? t("allDayEvent")
+                      : format.dateTime(event.startsAt, { hour: "2-digit", minute: "2-digit", timeZone: event.timeZone })}
+                  </p>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {deadlines.length > 0 && (

@@ -991,17 +991,92 @@ user action at all**, which is the entire point.
 
 ---
 
+---
+
+## Phase 4b — Calendar and recurrence (implemented)
+
+CLAUDE.md §7 sets the bar specifically: "Recurring events must store
+recurrence rules and a timezone… DST transitions must have tests." The
+requirement is therefore not "support recurrence" but "be correct across
+DST", which is what shaped the design ([ADR-014](../architecture/adr/ADR-014-recurrence.md)).
+
+**Events store a wall clock plus an IANA zone, never a bare instant.**
+"Swimming, Tuesdays at 17:00" is a statement about the clock on the wall.
+Store a UTC instant and add seven days and the series drifts an hour
+across a transition — the family arrives at the pool at the wrong time.
+So occurrences are generated as wall-clock values and only then converted
+to instants, each with the offset in force on its own date.
+
+Two DST edge cases have no single right answer and were decided
+explicitly, documented in the code and covered by tests: a time **skipped**
+by the spring-forward resolves *forward* (02:30 → 03:30) rather than
+throwing — a recurring event must not vanish once a year — and an
+**ambiguous** time on the autumn fall-back resolves to the *first* of its
+two readings.
+
+No date or recurrence dependency was added. `rrule` expands in UTC and
+leaves the timezone problem to the caller, so it would have added a
+dependency without removing the hard part; the two `Intl`-based
+conversions this needs are ~60 lines against data the platform already
+ships. A deliberately small rule vocabulary (DAILY/WEEKLY/MONTHLY/YEARLY,
+interval, weekly by-weekday, count/until) covers what households actually
+schedule.
+
+Smaller decisions worth recording: a monthly event on the 31st **skips**
+months without a 31st rather than sliding to the 28th, which would invent
+a commitment on a day nobody chose; `count` counts over the series rather
+than the query window, so "the first five lessons" means the same five
+whichever month is on screen; and expansion is bounded, because an
+open-ended daily rule queried over a decade would otherwise be a denial of
+service against the household's own server.
+
+### Three bugs found, each by a different means
+
+- **A real mobile layout bug, found by the E2E suite failing.** `.nav` was
+  a flex row with no `flex-wrap`, so each nav destination pushed the page
+  wider until, at eight, a 375px phone overflowed horizontally and taps
+  started landing on the wrong element — violating
+  `implementation-handoff.md`'s "Never horizontally scroll primary
+  content". Fixed, and now guarded by a test asserting `scrollWidth <=
+  clientWidth` on four pages at mobile width, so the next nav item cannot
+  quietly reintroduce it.
+- **A clock-skew bug in the outbox worker, found by intermittent test
+  failures.** `next_attempt_at` is written by the *database* clock but was
+  compared against the *application's* `new Date()`. The Postgres
+  container here ran ~0.4s ahead of the host, leaving just-inserted events
+  unclaimable for a few hundred milliseconds. This was a genuine
+  production robustness issue, not a test artifact: any clock drift
+  between app and database would have stalled delivery. The claim now uses
+  the database's own `now()` — one clock decides.
+- **A test race**, of the same class as one in Phase 2: `count()` takes a
+  snapshot and does not retry, unlike `toBeVisible()`, so counting rows
+  straight after a Server Action click raced the write.
+
+### Verification
+
+221 unit/integration tests (44 new: 11 timezone, 21 recurrence, 12
+calendar integration) and **51 E2E** across desktop and mobile. The suite
+was run three times over to confirm the flakiness was genuinely fixed
+rather than merely passing once. Verified live in the browser: a weekly
+17:00 event spanning the 25 October 2026 fall-back renders as 17:00 on
+18 Oct, 25 Oct and 1 Nov, despite the underlying instants differing by an
+hour — the wall-clock design doing exactly its job.
+
+---
+
 ### Not yet done
 
-- **Calendar events and recurrence** (the rest of Phase 4) are not built.
-  CLAUDE.md §7's demand that "recurring events must store recurrence rules
-  and a timezone" and that "DST transitions must have tests" is a
-  substantial piece of work in its own right and is the natural next
-  increment — `household.timezone` already exists to support it.
-- **Notification preferences, quiet hours and escalation** (CLAUDE.md §16)
-  remain unimplemented, and now matter more than they did: with a
-  scheduled producer running, the volume of notifications is no longer
-  bounded by how often someone clicks something.
+- **The mobile bottom nav** from `docs/design/design-system.md`. The top
+  bar was the right call at two destinations and is the wrong one at
+  eight: it now wraps onto multiple rows and eats real vertical space on a
+  phone. This is the outstanding design-system debt and should be the
+  first item of the next UI-facing phase.
+- **Notification preferences and quiet hours** (CLAUDE.md §16). Worth
+  correcting an overstatement in the Phase 4a notes: with delivery
+  currently in-app only, a notification created at 03:00 wakes nobody, so
+  quiet hours matter materially only once a *push* or email channel
+  exists. Volume and relevance are the real near-term concerns, and
+  dedupe already addresses the worst of that.
 - **Organizations, contacts and document references** (the rest of
   CLAUDE.md §17's Phase 3 list) are not built. Cases carry an
   `externalReference` string, which covers the common "their file number"

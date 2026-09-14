@@ -35,7 +35,8 @@
     "signOut": "Abmelden",
     "notifications": "Mitteilungen",
     "unreadCount": "{count, plural, one {# ungelesen} other {# ungelesen}}",
-    "cases": "Vorgänge"
+    "cases": "Vorgänge",
+    "calendar": "Kalender"
   },
   "home": {
     "greeting": "Hallo, {name}",
@@ -106,7 +107,9 @@
     "waitingSection": "Warten auf andere",
     "deadlinesSection": "Erreichte Fristen",
     "empty": "Heute ist nichts fällig. Nichts ist überfällig.",
-    "waitingSince": "Wartet seit {date}"
+    "waitingSince": "Wartet seit {date}",
+    "eventsSection": "Termine heute",
+    "allDayEvent": "Ganztägig"
   },
   "attention": {
     "title": "Wichtig",
@@ -184,6 +187,28 @@
     "errorBlockingReasonRequired": "Bitte angeben, was den Vorgang blockiert.",
     "errorConflict": "Dieser Vorgang wurde zwischenzeitlich geändert. Bitte neu laden.",
     "errorNotAuthorized": "Sie haben keine Berechtigung, diesen Vorgang zu ändern.",
+    "errorInvalidInput": "Bitte überprüfen Sie das Formular – etwas wurde nicht korrekt ausgefüllt."
+  },
+  "calendar": {
+    "title": "Kalender",
+    "description": "Was in den nächsten {days} Tagen ansteht.",
+    "empty": "Nichts geplant.",
+    "addEvent": "Termin hinzufügen",
+    "titleLabel": "Was steht an?",
+    "dateLabel": "Datum",
+    "timeLabel": "Uhrzeit",
+    "locationLabel": "Wo (optional)",
+    "repeatLabel": "Wiederholung",
+    "repeats": "wiederkehrend",
+    "allDay": "Ganztägig",
+    "repeat": {
+      "NONE": "Einmalig",
+      "DAILY": "Täglich",
+      "WEEKLY": "Wöchentlich",
+      "MONTHLY": "Monatlich",
+      "YEARLY": "Jährlich"
+    },
+    "errorNotAuthorized": "Sie haben keine Berechtigung, Termine hinzuzufügen.",
     "errorInvalidInput": "Bitte überprüfen Sie das Formular – etwas wurde nicht korrekt ausgefüllt."
   }
 }

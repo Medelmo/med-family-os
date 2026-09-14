@@ -42,13 +42,17 @@ export async function processOutbox(batchSize = 20, now: Date = new Date()): Pro
 
 async function processOne(now: Date, result: OutboxRunResult): Promise<boolean> {
   return db.transaction(async (tx) => {
-    // now is bound as an ISO string with an explicit cast rather than as a
-    // Date: the postgres.js driver rejects a Date parameter inside a raw
-    // sql fragment ("Received an instance of Date").
+    // Claimed against the database's own clock, not the application's.
+    // `next_attempt_at` is written by the database (defaultNow, and the
+    // backoff below), so comparing it to a JS `new Date()` mixes two
+    // clocks — and they do drift: the Postgres container here ran ~0.4s
+    // ahead of the host, which left just-inserted events unclaimable for
+    // a few hundred milliseconds and made the suite flaky. One clock
+    // decides.
     const claimed = await tx.execute(sql`
       select id, household_id, event_type, payload, attempts
       from ${outboxEvents}
-      where status = 'PENDING' and next_attempt_at <= ${now.toISOString()}::timestamptz
+      where status = 'PENDING' and next_attempt_at <= now()
       order by created_at
       limit 1
       for update skip locked
