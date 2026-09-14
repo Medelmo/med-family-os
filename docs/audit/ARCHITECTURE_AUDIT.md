@@ -879,8 +879,81 @@ row appeared, the nav badge showed "Notifications 1" for that member and
 nobody else, and "Mark all as read" cleared both the badge and the item
 state.
 
+---
+
+## Phase 3 — Cases and context (implemented)
+
+Vertical slice 3: **case -> next action -> waiting -> timeline -> linked
+work**.
+
+- **`domain/cases/case.ts`** — the Case state machine, verbatim from
+  ADR-007, as a pure function alongside the Task one. The two machines are
+  deliberately *not* symmetric, and the code says why: a case can be
+  BLOCKED and ARCHIVED and cancelled straight from WAITING; a task cannot,
+  but a task can be reopened and a case cannot. Each follows its own
+  documented shape rather than being filed down to match the other.
+- **WAITING demands a follow-up date *or* a stated reason** — the explicit
+  escape hatch `state-machines.md` allows. A blank reason counts as no
+  reason. This is the mechanism behind product-spec.md's "without these
+  fields, a waiting list becomes a graveyard", and it is enforced in the
+  domain, surfaced in the UI, and covered by unit, integration and E2E
+  tests.
+- **`case_event`** is the timeline: append-only, carrying both status
+  changes and human notes. Notes take no version and cannot conflict —
+  appending to a history is commutative, so two people writing at once is
+  two notes, not a conflict to resolve. Optimistic concurrency stays on the
+  case's mutable fields where it belongs.
+- **Cases join tasks in one attention list.** This required refactoring
+  `domain/attention/rules.ts` to take a *normalised* candidate (`waiting`,
+  `blocked`, `actionable`) instead of a status string. The rules now never
+  see either aggregate's status enum, so adding a status cannot silently
+  change attention behaviour — and the reimbursements, warranties and trips
+  the product spec promises will feed the same rules without touching them.
+  The existing integration tests passed unchanged through the refactor,
+  which is what made it safe.
+- A new **BLOCKED** attention reason, weighted above WAITING: waiting is
+  stalled on someone else, blocked is stalled on something the household
+  itself can act on.
+
+### Bugs found in this phase
+
+- **A stale disclosure in the case UI.** After a successful transition the
+  component re-renders with a new status, but the "waiting" form's open/
+  closed state is client state and survived — leaving an expanded form
+  offering an action the state machine would now reject. Fixed by deriving
+  the form's visibility from the current status as well as the toggle.
+  Found by clicking through it, not by any test.
+- **`z.infer` where `z.input` was meant.** Command input types were derived
+  from the schema's *output*, in which every `.default()` field is already
+  required — so callers were forced to pass the very values the schema
+  exists to supply. Caught by `tsc` (Vitest does not typecheck, so the
+  integration tests had been passing happily). Fixed in three commands.
+- **My own CSP broke the dev HMR socket.** `connect-src 'self'` does not
+  cover `ws:`. Production has no HMR so nothing shipped broken, but it was
+  a real developer-experience regression I had introduced; `ws:`/`wss:` are
+  now allowed in development only, alongside the existing dev-only
+  `unsafe-eval`.
+
+### Verification
+
+`pnpm typecheck`, `pnpm lint` clean; **159 unit/integration tests** (33 new
+for the case machine, 20 new integration covering the timeline, linking,
+concurrency and authorization); **35 E2E** across desktop and mobile
+including three new case journeys; and a manual walkthrough that opened a
+case, was correctly refused an open-ended wait, parked it with a stated
+reason, blocked it, and saw each step land on both the timeline and
+Attention.
+
+---
+
 ### Not yet done
 
+- **Organizations, contacts and document references** (the rest of
+  CLAUDE.md §17's Phase 3 list) are not built. Cases carry an
+  `externalReference` string, which covers the common "their file number"
+  need; a full Organization/Contact aggregate is worth doing when there is
+  a second thing that needs to point at one (documents, expenses), rather
+  than now for its own sake.
 - **Reminders proper** (time-triggered: "follow-up date reached", "deadline
   in 3 days") still do not exist. The outbox delivers *event*-triggered
   notifications; a scheduled scan that emits events when a date arrives is

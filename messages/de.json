@@ -34,7 +34,8 @@
     "family": "Familie",
     "signOut": "Abmelden",
     "notifications": "Mitteilungen",
-    "unreadCount": "{count, plural, one {# ungelesen} other {# ungelesen}}"
+    "unreadCount": "{count, plural, one {# ungelesen} other {# ungelesen}}",
+    "cases": "Vorgänge"
   },
   "home": {
     "greeting": "Hallo, {name}",
@@ -130,5 +131,56 @@
     "types": {
       "taskAssigned": "Sie wurden für eine Aufgabe zuständig gemacht"
     }
+  },
+  "cases": {
+    "title": "Vorgänge",
+    "description": "Reale Abläufe mit Verlauf: auf wen Sie warten, was blockiert ist und was als Nächstes ansteht.",
+    "empty": "Keine offenen Vorgänge.",
+    "openCase": "Vorgang anlegen",
+    "titleLabel": "Worum geht es?",
+    "nextActionLabel": "Nächster Schritt",
+    "nextActionTitle": "Nächster Schritt",
+    "saveNextAction": "Nächsten Schritt speichern",
+    "noNextAction": "Kein nächster Schritt festgelegt",
+    "backToCases": "← Alle Vorgänge",
+    "actionsTitle": "Vorgang weiterbringen",
+    "noActions": "Dieser Vorgang ist abgeschlossen. Es ist nichts mehr zu tun.",
+    "waitingFor": "Wartet auf {who}",
+    "waitingForLabel": "Wartet auf",
+    "followUpLabel": "Nachfassen am",
+    "noFollowUpReasonLabel": "…oder warum es kein Datum zum Nachfassen gibt",
+    "externalReferenceLabel": "Aktenzeichen",
+    "blockedBy": "Blockiert: {reason}",
+    "blockedReasonLabel": "Was blockiert den Vorgang?",
+    "peopleLabel": "Betrifft",
+    "linkedTasks": "Aufgaben zu diesem Vorgang",
+    "noLinkedTasks": "Noch keine Aufgaben verknüpft.",
+    "timelineTitle": "Verlauf",
+    "noteLabel": "Notiz hinzufügen",
+    "addNote": "Notiz speichern",
+    "status": {
+      "DRAFT": "Entwurf",
+      "ACTIVE": "Offen",
+      "WAITING": "Wartet",
+      "BLOCKED": "Blockiert",
+      "COMPLETED": "Erledigt",
+      "CANCELLED": "Verworfen",
+      "ARCHIVED": "Archiviert"
+    },
+    "actions": {
+      "activate": "Eröffnen",
+      "wait": "Auf jemanden warten",
+      "block": "Als blockiert markieren",
+      "resume": "Wieder aufnehmen",
+      "complete": "Abschließen",
+      "cancel": "Verwerfen",
+      "archive": "Archivieren"
+    },
+    "errorIllegalTransition": "Das ist kein gültiger nächster Schritt für diesen Vorgang.",
+    "errorFollowUpRequired": "Bitte ein Datum zum Nachfassen angeben – oder begründen, warum es keines gibt.",
+    "errorBlockingReasonRequired": "Bitte angeben, was den Vorgang blockiert.",
+    "errorConflict": "Dieser Vorgang wurde zwischenzeitlich geändert. Bitte neu laden.",
+    "errorNotAuthorized": "Sie haben keine Berechtigung, diesen Vorgang zu ändern.",
+    "errorInvalidInput": "Bitte überprüfen Sie das Formular – etwas wurde nicht korrekt ausgefüllt."
   }
 }

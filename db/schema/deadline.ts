@@ -2,6 +2,7 @@ import { date, index, integer, pgTable, text, timestamp, uuid } from "drizzle-or
 import { sql } from "drizzle-orm";
 import { households } from "./household";
 import { tasks } from "./task";
+import { cases } from "./case";
 import { users } from "./auth";
 import { sensitivityEnum, visibilityEnum } from "./enums";
 
@@ -15,8 +16,8 @@ import { sensitivityEnum, visibilityEnum } from "./enums";
  * every real commitment had to be phrased as a task before it could be
  * tracked, which is how commitments get missed.
  *
- * taskId is the only link Phase 2 can offer; case/trip links arrive with
- * those aggregates in Phases 3 and 6.
+ * taskId and caseId are the links available today; trip links arrive with
+ * that aggregate in Phase 6.
  */
 export const deadlines = pgTable(
   "deadline",
@@ -29,6 +30,7 @@ export const deadlines = pgTable(
     description: text("description"),
     dueOn: date("due_on", { mode: "date" }).notNull(),
     taskId: uuid("task_id").references(() => tasks.id, { onDelete: "set null" }),
+    caseId: uuid("case_id").references(() => cases.id, { onDelete: "set null" }),
     metAt: timestamp("met_at", { mode: "date", withTimezone: true }),
 
     visibility: visibilityEnum("visibility").notNull().default("HOUSEHOLD"),

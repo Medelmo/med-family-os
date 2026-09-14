@@ -35,6 +35,9 @@ export async function AppShell({ userName, unreadNotifications, children }: AppS
           <Link href="/tasks" className={styles.navLink}>
             {tNav("tasks")}
           </Link>
+          <Link href="/cases" className={styles.navLink}>
+            {tNav("cases")}
+          </Link>
           <Link href="/family" className={styles.navLink}>
             {tNav("family")}
           </Link>

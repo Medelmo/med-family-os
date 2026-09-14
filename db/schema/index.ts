@@ -6,4 +6,5 @@ export * from "./audit";
 export * from "./inbox";
 export * from "./task";
 export * from "./deadline";
+export * from "./case";
 export * from "./outbox";

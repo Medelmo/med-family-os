@@ -60,11 +60,14 @@ export default auth((req) => {
 function contentSecurityPolicy(nonce: string): string {
   const scriptSrc = [`'self'`, `'nonce-${nonce}'`, `'strict-dynamic'`];
 
-  // Next's dev server compiles with eval for hot reloading. Production
-  // never gets this relaxation.
-  if (process.env.NODE_ENV !== "production") {
+  // Next's dev server compiles with eval for hot reloading, and pushes
+  // updates over a WebSocket that `connect-src 'self'` does not cover.
+  // Production gets neither relaxation — it has no HMR to serve.
+  const isDev = process.env.NODE_ENV !== "production";
+  if (isDev) {
     scriptSrc.push(`'unsafe-eval'`);
   }
+  const connectSrc = isDev ? `'self' ws: wss:` : `'self'`;
 
   return [
     "default-src 'self'",
@@ -74,7 +77,7 @@ function contentSecurityPolicy(nonce: string): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
     "font-src 'self'",
-    "connect-src 'self'",
+    `connect-src ${connectSrc}`,
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

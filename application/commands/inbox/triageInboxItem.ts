@@ -19,7 +19,8 @@ const triageToTaskSchema = z.object({
   aboutPersonIds: z.array(z.string().uuid()).default([]),
 });
 
-export type TriageInboxItemToTaskInput = z.infer<typeof triageToTaskSchema>;
+// z.input, not z.infer — see createCase.ts for why.
+export type TriageInboxItemToTaskInput = z.input<typeof triageToTaskSchema>;
 
 /**
  * Turns a capture into a Task, in one transaction, keeping the provenance

@@ -27,3 +27,16 @@ export const inboxItemStatusEnum = pgEnum("inbox_item_status", ["UNTRIAGED", "TR
 // FAILED is terminal: the worker stops retrying and leaves the row for
 // inspection rather than looping forever (ADR-013).
 export const outboxStatusEnum = pgEnum("outbox_status", ["PENDING", "PROCESSED", "FAILED"]);
+
+// Mirrors domain/cases/case.ts. Note this is a different shape from
+// task_status on purpose: a case can be BLOCKED and ARCHIVED, a task
+// cannot, and a task can be reopened, a case cannot (ADR-007).
+export const caseStatusEnum = pgEnum("case_status", [
+  "DRAFT",
+  "ACTIVE",
+  "WAITING",
+  "BLOCKED",
+  "COMPLETED",
+  "CANCELLED",
+  "ARCHIVED",
+]);

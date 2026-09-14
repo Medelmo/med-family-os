@@ -2,10 +2,12 @@ import { and, asc, eq, isNull, lte } from "drizzle-orm";
 import { db } from "../../../infrastructure/db/client";
 import { deadlines } from "../../../db/schema";
 import { getHouseholdTimezone, getTasks, type TaskListItem } from "../tasks/getTasks";
+import { getCases, type CaseListItem } from "../cases/getCases";
 import { householdToday } from "../../time";
 import {
   projectAttention,
   toIsoDate,
+  type AttentionCandidate,
   type AttentionItem,
   type AttentionRuleConfig,
 } from "../../../domain/attention/rules";
@@ -15,10 +17,15 @@ import { canAccess } from "../../policies/authorize";
 /**
  * The Attention projection.
  *
- * Computed on read from the same task rows everything else uses — there is
- * no attention table, because product-spec.md is explicit that attention is
+ * Computed on read from the same rows everything else uses — there is no
+ * attention table, because product-spec.md is explicit that attention is
  * "a projection, not stored truth". Storing it would create a second copy
  * of the truth that can silently disagree with the first.
+ *
+ * Tasks and cases are ranked in one list rather than two: the household
+ * has one attention budget, and splitting it by aggregate would leave the
+ * reader to merge the lists in their head — which is the work this view
+ * exists to do for them.
  */
 export async function getAttention(
   actor: Actor,
@@ -26,11 +33,15 @@ export async function getAttention(
   now: Date = new Date(),
   config?: AttentionRuleConfig
 ): Promise<{ items: AttentionItem[]; todayIso: string }> {
-  const [timezone, tasks] = await Promise.all([getHouseholdTimezone(householdId), getTasks(actor, householdId)]);
+  const [timezone, tasks, cases] = await Promise.all([
+    getHouseholdTimezone(householdId),
+    getTasks(actor, householdId),
+    getCases(actor, householdId),
+  ]);
   const todayIso = householdToday(timezone, now);
 
   const items = projectAttention(
-    tasks.map((task) => taskToCandidate(task)),
+    [...tasks.map(taskToCandidate), ...cases.map(caseToCandidate)],
     todayIso,
     now,
     config
@@ -39,17 +50,56 @@ export async function getAttention(
   return { items, todayIso };
 }
 
-function taskToCandidate(task: TaskListItem) {
+/**
+ * Maps a case onto the rules' normalised shape.
+ *
+ * A case has no due date of its own — a date the household is committed to
+ * is a Deadline, linked to the case — so `dueOn` is null and the follow-up
+ * date carries the time pressure instead.
+ */
+function caseToCandidate(kase: CaseListItem): AttentionCandidate {
+  return {
+    id: kase.id,
+    kind: "case",
+    title: kase.title,
+    priority: kase.priority,
+    dueOn: null,
+    waiting:
+      kase.status === "WAITING"
+        ? {
+            since: kase.waitingSince,
+            followUpAt: kase.followUpAt,
+            // A case waits open-endedly only by explicit choice, recorded
+            // as a reason (domain/cases/case.ts).
+            indefinite: kase.followUpAt === null && kase.waitingNoFollowUpReason !== null,
+          }
+        : null,
+    blocked: kase.status === "BLOCKED" ? { reason: kase.blockedReason } : null,
+    actionable: kase.status === "ACTIVE",
+    nextAction: kase.nextAction,
+  };
+}
+
+/**
+ * Maps a task onto the rules' normalised shape. The task's status enum
+ * stops here: domain/attention/rules.ts never sees it, so adding a status
+ * cannot silently change what the attention rules do.
+ */
+function taskToCandidate(task: TaskListItem): AttentionCandidate {
   return {
     id: task.id,
-    kind: "task" as const,
+    kind: "task",
     title: task.title,
-    status: task.status,
     priority: task.priority,
     dueOn: task.dueOn ? toIsoDate(task.dueOn) : null,
-    followUpAt: task.followUpAt,
-    waitingSince: task.waitingSince,
-    waitingIndefinite: task.waitingIndefinite,
+    waiting:
+      task.status === "WAITING"
+        ? { since: task.waitingSince, followUpAt: task.followUpAt, indefinite: task.waitingIndefinite }
+        : null,
+    // Tasks have no blocked state — that distinction exists only for cases
+    // (docs/domain/state-machines.md).
+    blocked: null,
+    actionable: task.status === "PLANNED" || task.status === "IN_PROGRESS",
     nextAction: task.nextAction,
   };
 }

@@ -1,5 +1,4 @@
 import type { Priority } from "../shared/types";
-import type { TaskStatus } from "../tasks/task";
 
 /**
  * Deterministic, explainable attention rules.
@@ -16,6 +15,13 @@ import type { TaskStatus } from "../tasks/task";
  * because CLAUDE.md §7 forbids inferring a timezone for stored domain
  * meaning — the caller resolves the household's IANA timezone into
  * `todayIso` and passes it down.
+ *
+ * Candidates arrive in a *normalised* shape rather than as raw aggregates.
+ * Tasks and cases have different status enums (and the product spec
+ * promises reimbursements, warranties and trips will feed this too), so
+ * the rules deliberately never see a status string: each aggregate maps
+ * itself to "is it stalled, is it actionable, when is it due" once, at its
+ * own edge, and the rules stay the single place the *policy* lives.
  */
 
 export type AttentionReasonCode =
@@ -24,13 +30,14 @@ export type AttentionReasonCode =
   | "FOLLOW_UP_DUE"
   | "WAITING_TOO_LONG"
   | "WAITING_INDEFINITELY"
+  | "BLOCKED"
   | "MISSING_NEXT_ACTION"
   | "HIGH_PRIORITY";
 
 export interface AttentionRuleConfig {
   /** A due date within this many days counts as "due soon". */
   dueSoonWindowDays: number;
-  /** A task waiting longer than this, with no follow-up reached yet, is stale. */
+  /** Stalled longer than this, with no follow-up reached yet, is stale. */
   waitingStaleDays: number;
 }
 
@@ -48,9 +55,10 @@ const WEIGHTS: Record<AttentionReasonCode, number> = {
   OVERDUE: 100,
   FOLLOW_UP_DUE: 70,
   DUE_SOON: 50,
+  BLOCKED: 45,
   WAITING_TOO_LONG: 40,
-  WAITING_INDEFINITELY: 15,
   MISSING_NEXT_ACTION: 20,
+  WAITING_INDEFINITELY: 15,
   HIGH_PRIORITY: 30,
 };
 
@@ -67,17 +75,34 @@ export interface AttentionReason {
   context?: Record<string, string | number>;
 }
 
+/** Stalled on someone else. */
+export interface WaitingContext {
+  since: Date | null;
+  followUpAt: Date | null;
+  /** Waiting open-endedly, by explicit choice rather than by omission. */
+  indefinite: boolean;
+}
+
+/** Stalled on something of the household's own. */
+export interface BlockedContext {
+  reason: string | null;
+}
+
 export interface AttentionCandidate {
   id: string;
-  kind: "task";
+  kind: "task" | "case";
   title: string;
-  status: TaskStatus;
   priority: Priority;
   /** Date-only, as "YYYY-MM-DD" — see toIsoDate. */
   dueOn: string | null;
-  followUpAt: Date | null;
-  waitingSince: Date | null;
-  waitingIndefinite: boolean;
+  waiting: WaitingContext | null;
+  blocked: BlockedContext | null;
+  /**
+   * True when someone could pick this up right now. Only actionable work
+   * is nagged about a missing next action — nagging about something that
+   * is deliberately parked is noise.
+   */
+  actionable: boolean;
   nextAction: string | null;
 }
 
@@ -128,13 +153,15 @@ export function evaluateAttention(
     }
   }
 
-  if (candidate.status === "WAITING") {
-    if (candidate.followUpAt && candidate.followUpAt.getTime() <= now.getTime()) {
+  if (candidate.waiting) {
+    const { since, followUpAt, indefinite } = candidate.waiting;
+
+    if (followUpAt && followUpAt.getTime() <= now.getTime()) {
       reasons.push({ code: "FOLLOW_UP_DUE" });
     }
 
-    if (candidate.waitingSince) {
-      const waitingDays = daysSince(candidate.waitingSince, now);
+    if (since) {
+      const waitingDays = daysSince(since, now);
       if (waitingDays >= config.waitingStaleDays) {
         reasons.push({ code: "WAITING_TOO_LONG", context: { waitingDays } });
       }
@@ -144,14 +171,21 @@ export function evaluateAttention(
     // product-spec.md: "Without these fields, a waiting list becomes a
     // graveyard." A low weight keeps it on the list without crowding out
     // items that have a real date attached.
-    if (candidate.waitingIndefinite) {
+    if (indefinite) {
       reasons.push({ code: "WAITING_INDEFINITELY" });
     }
   }
 
-  // An actionable task nobody has written a next step for is the single
-  // most common way work stalls silently.
-  if ((candidate.status === "PLANNED" || candidate.status === "IN_PROGRESS") && !candidate.nextAction) {
+  // Blocked is not the same as waiting and is weighted higher: waiting is
+  // stalled on someone else, blocked is stalled on something the household
+  // itself still has to resolve — which makes it actionable right now.
+  if (candidate.blocked) {
+    reasons.push({ code: "BLOCKED", context: candidate.blocked.reason ? { reason: candidate.blocked.reason } : undefined });
+  }
+
+  // Work nobody has written a next step for is the single most common way
+  // things stall silently.
+  if (candidate.actionable && !candidate.nextAction) {
     reasons.push({ code: "MISSING_NEXT_ACTION" });
   }
 

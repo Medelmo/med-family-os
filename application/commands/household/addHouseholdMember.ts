@@ -23,7 +23,8 @@ const addMemberInputSchema = z.object({
     .optional(),
 });
 
-export type AddHouseholdMemberInput = z.infer<typeof addMemberInputSchema>;
+// z.input, not z.infer — see createCase.ts for why.
+export type AddHouseholdMemberInput = z.input<typeof addMemberInputSchema>;
 
 /**
  * Adds a new household member. OWNER/ADMIN only (ADR-012: no public

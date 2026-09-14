@@ -34,7 +34,8 @@
     "family": "Family",
     "signOut": "Sign out",
     "notifications": "Notifications",
-    "unreadCount": "{count, plural, one {# unread} other {# unread}}"
+    "unreadCount": "{count, plural, one {# unread} other {# unread}}",
+    "cases": "Cases"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -130,5 +131,56 @@
     "types": {
       "taskAssigned": "You were made responsible for a task"
     }
+  },
+  "cases": {
+    "title": "Cases",
+    "description": "Real-world processes with a lifecycle: who you are waiting on, what is blocked, and what happens next.",
+    "empty": "No open cases.",
+    "openCase": "Open a case",
+    "titleLabel": "What is this about?",
+    "nextActionLabel": "Next action",
+    "nextActionTitle": "Next action",
+    "saveNextAction": "Save next action",
+    "noNextAction": "No next action decided",
+    "backToCases": "← All cases",
+    "actionsTitle": "Move this case on",
+    "noActions": "This case is closed. Nothing more to do.",
+    "waitingFor": "Waiting for {who}",
+    "waitingForLabel": "Waiting for",
+    "followUpLabel": "Follow up on",
+    "noFollowUpReasonLabel": "…or why there is no follow-up date",
+    "externalReferenceLabel": "Their reference",
+    "blockedBy": "Blocked: {reason}",
+    "blockedReasonLabel": "What is blocking it?",
+    "peopleLabel": "Concerns",
+    "linkedTasks": "Work on this case",
+    "noLinkedTasks": "No tasks linked yet.",
+    "timelineTitle": "History",
+    "noteLabel": "Add a note",
+    "addNote": "Add note",
+    "status": {
+      "DRAFT": "Draft",
+      "ACTIVE": "Open",
+      "WAITING": "Waiting",
+      "BLOCKED": "Blocked",
+      "COMPLETED": "Resolved",
+      "CANCELLED": "Dropped",
+      "ARCHIVED": "Archived"
+    },
+    "actions": {
+      "activate": "Open it",
+      "wait": "Waiting on someone",
+      "block": "Mark blocked",
+      "resume": "Pick it back up",
+      "complete": "Resolve",
+      "cancel": "Drop it",
+      "archive": "Archive"
+    },
+    "errorIllegalTransition": "That isn't a valid next step for this case.",
+    "errorFollowUpRequired": "Give a follow-up date, or say why there isn't one.",
+    "errorBlockingReasonRequired": "Say what is blocking the case.",
+    "errorConflict": "This case was changed by someone else. Reload and try again.",
+    "errorNotAuthorized": "You don't have permission to change this case.",
+    "errorInvalidInput": "Please check the form — something wasn't filled in correctly."
   }
 }
