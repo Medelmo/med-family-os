@@ -1,0 +1,4 @@
+ALTER TABLE "integration_connection" ADD COLUMN "username" text;--> statement-breakpoint
+ALTER TABLE "integration_connection" ADD COLUMN "remote_path" text;--> statement-breakpoint
+ALTER TABLE "integration_connection" ADD CONSTRAINT "integration_connection_remote_path_safe" CHECK ("integration_connection"."remote_path" is null or ("integration_connection"."remote_path" !~ '(^|/)\.\.(/|$)' and "integration_connection"."remote_path" !~ '[\r\n]'));--> statement-breakpoint
+ALTER TABLE "integration_connection" ADD CONSTRAINT "integration_connection_username_safe" CHECK ("integration_connection"."username" is null or ("integration_connection"."username" <> '' and "integration_connection"."username" !~ '[/\r\n]'));

@@ -5,6 +5,7 @@ import { applySyncCommand, nextCursorAfter, type SyncCommand, type SyncRun } fro
 import type { SyncTrigger } from "../../../domain/integrations/syncSchedule";
 import { applyProviderUpdate, isSafeDocumentUrl } from "../../../domain/documents/documentReference";
 import { createPaperlessProvider, withTimeout, PAPERLESS_TIMEOUT_MS } from "../../../infrastructure/integrations/paperless";
+import { createNextcloudProvider, NEXTCLOUD_TIMEOUT_MS } from "../../../infrastructure/integrations/nextcloud";
 import { ProviderError, type DocumentProvider } from "../../integrations/documentProvider";
 import { recordAuditEvent } from "../../audit/recordAuditEvent";
 import { authorizeIntegrationAccess } from "../../policies/integrations";
@@ -34,6 +35,13 @@ export interface SyncOutcome {
 
 export interface SyncOptions {
   providerFactory?: (baseUrl: string, token: string) => DocumentProvider;
+  /**
+   * Injected into the real adapter, the same way each adapter already
+   * accepts one — so a test can exercise provider *selection* and the
+   * adapter together without a network, which `providerFactory` skips
+   * over by replacing both.
+   */
+  fetchImpl?: typeof fetch;
   now?: Date;
 }
 
@@ -231,14 +239,53 @@ async function loadSyncableConnection(householdId: string, connectionId: string)
   if (!connection.enabled) {
     throw new IntegrationRuleError("DISABLED", "This integration is switched off.");
   }
-  if (connection.provider !== "PAPERLESS") {
-    // The port exists and the sync driver is provider-agnostic; only
-    // Paperless has an adapter so far. Saying so beats a confusing empty
-    // run.
+  if (!HAS_ADAPTER.has(connection.provider)) {
+    // CalDAV is configurable but not yet readable. Saying so beats a
+    // confusing empty run.
     throw new IntegrationRuleError("NO_ADAPTER", "There is no adapter for this provider yet.");
+  }
+  if (connection.provider === "NEXTCLOUD" && !connection.username) {
+    // Cannot even build the WebDAV URL. Refused as configuration rather
+    // than attempted and failed with a message about WebDAV.
+    throw new IntegrationRuleError("NO_ACCOUNT", "This Nextcloud connection has no account name.");
   }
 
   return connection;
+}
+
+const HAS_ADAPTER = new Set(["PAPERLESS", "NEXTCLOUD"]);
+
+/**
+ * The adapter for a connection, and the timeout it should run under.
+ *
+ * The one place provider identity is turned into provider code. Everything
+ * on either side of it — the run machine, the cursor, the importer, the
+ * scheduler — is provider-agnostic, which is what made adding the second
+ * adapter a matter of this function and a file, rather than a change to
+ * the sync driver.
+ */
+function adapterFor(
+  connection: typeof integrationConnections.$inferSelect,
+  token: string,
+  fetchImpl?: typeof fetch
+): { provider: DocumentProvider; timeoutMs: number } {
+  if (connection.provider === "NEXTCLOUD") {
+    return {
+      provider: createNextcloudProvider({
+        baseUrl: connection.baseUrl,
+        username: connection.username ?? "",
+        appPassword: token,
+        remotePath: connection.remotePath ?? "",
+        fetchImpl,
+      }),
+      timeoutMs: NEXTCLOUD_TIMEOUT_MS,
+    };
+  }
+
+  return {
+    provider: createPaperlessProvider({ baseUrl: connection.baseUrl, apiToken: token, fetchImpl }),
+    timeoutMs: PAPERLESS_TIMEOUT_MS,
+  };
 }
 
 /**
@@ -274,12 +321,11 @@ async function executeRun(
 
   try {
     const token = await openIntegrationCredential(householdId, connectionId);
-    const provider =
-      options.providerFactory?.(connection.baseUrl, token) ??
-      createPaperlessProvider({ baseUrl: connection.baseUrl, apiToken: token });
+    const chosen = adapterFor(connection, token, options.fetchImpl);
+    const provider = options.providerFactory?.(connection.baseUrl, token) ?? chosen.provider;
 
     for (let page = 0; page < MAX_PAGES_PER_RUN; page++) {
-      const result = await withTimeout(PAPERLESS_TIMEOUT_MS, (signal) => provider.listDocuments(cursor, signal));
+      const result = await withTimeout(chosen.timeoutMs, (signal) => provider.listDocuments(cursor, signal));
 
       const counts = await importPage(householdId, connectionId, connection.provider, result.documents, now);
       seen += result.documents.length;

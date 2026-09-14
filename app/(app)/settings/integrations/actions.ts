@@ -18,6 +18,26 @@ export interface IntegrationFormState {
   error?: string;
   /** Counts from a completed sync, so the page can say what happened. */
   synced?: { status: string; imported: number; skipped: number };
+  /**
+   * What the household typed, handed back so a rejected form is not also
+   * an erased one.
+   *
+   * React 19 resets an uncontrolled form once its action completes, error
+   * or not — so without this, one validation failure costs the address,
+   * the display name and the folder, and the person retypes all of it.
+   *
+   * **The token is deliberately absent.** Echoing it would put a
+   * credential into the rendered HTML, which is the one thing this page
+   * has been careful about since it was written; the form says so and
+   * asks for it again.
+   */
+  values?: {
+    provider?: string;
+    displayName?: string;
+    baseUrl?: string;
+    username?: string;
+    remotePath?: string;
+  };
 }
 
 function toErrorCode(error: unknown): string {
@@ -36,6 +56,8 @@ function toErrorCode(error: unknown): string {
         return "no_credential";
       case "ALREADY_RUNNING":
         return "already_running";
+      case "NO_ACCOUNT":
+        return "no_account";
       case "INTERVAL_TOO_SHORT":
       case "INTERVAL_INVALID":
         return "interval_invalid";
@@ -60,15 +82,24 @@ export async function submitConnect(
 ): Promise<IntegrationFormState> {
   const { actor, householdId } = await requireActor();
 
+  const typed = {
+    provider: String(formData.get("provider") ?? "PAPERLESS"),
+    displayName: String(formData.get("displayName") ?? ""),
+    baseUrl: String(formData.get("baseUrl") ?? ""),
+    username: String(formData.get("username") ?? ""),
+    remotePath: String(formData.get("remotePath") ?? ""),
+  };
+
   try {
     await connectIntegration(actor, householdId, {
-      provider: String(formData.get("provider") ?? "PAPERLESS") as never,
-      displayName: String(formData.get("displayName") ?? ""),
-      baseUrl: String(formData.get("baseUrl") ?? ""),
+      ...typed,
+      provider: typed.provider as never,
       apiToken: String(formData.get("apiToken") ?? ""),
     });
   } catch (error) {
-    return { error: toErrorCode(error) };
+    // Everything except the token, so a rejected form is not also an
+    // erased one. The token is never handed back — see IntegrationFormState.
+    return { error: toErrorCode(error), values: typed };
   }
 
   revalidateIntegrations();

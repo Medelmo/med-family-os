@@ -29,6 +29,7 @@ const ERROR_KEYS = {
   no_credential: "errorNoCredential",
   already_running: "errorAlreadyRunning",
   interval_invalid: "errorIntervalInvalid",
+  no_account: "errorNoAccount",
 } as const;
 
 function ErrorLine({ error }: { error?: string }) {
@@ -59,11 +60,15 @@ export function ConnectForm({ keyringReady }: { keyringReady: boolean }) {
         </p>
       )}
 
+      {/* React 19 resets an uncontrolled form once its action completes,
+          whether or not it succeeded. Without handing the values back,
+          one rejected submit costs the address, the name and the folder.
+          The token is deliberately not among them — see actions.ts. */}
       <form action={formAction} className={styles.form}>
         <SelectField
           label={t("providerLabel")}
           name="provider"
-          defaultValue="PAPERLESS"
+          defaultValue={state.values?.provider ?? "PAPERLESS"}
           options={[
             { value: "PAPERLESS", label: "Paperless-ngx" },
             { value: "NEXTCLOUD", label: "Nextcloud" },
@@ -71,7 +76,13 @@ export function ConnectForm({ keyringReady }: { keyringReady: boolean }) {
           ]}
           hint={t("providerHint")}
         />
-        <TextField label={t("displayNameLabel")} name="displayName" required autoComplete="off" />
+        <TextField
+          label={t("displayNameLabel")}
+          name="displayName"
+          required
+          autoComplete="off"
+          defaultValue={state.values?.displayName}
+        />
         <TextField
           label={t("baseUrlLabel")}
           name="baseUrl"
@@ -80,6 +91,7 @@ export function ConnectForm({ keyringReady }: { keyringReady: boolean }) {
           autoComplete="off"
           placeholder="https://paperless.internal"
           hint={t("baseUrlHint")}
+          defaultValue={state.values?.baseUrl}
         />
         {/* type="password" so it is not shoulder-read, and no autofill:
             this is a machine token, not a login, and a password manager
@@ -90,7 +102,33 @@ export function ConnectForm({ keyringReady }: { keyringReady: boolean }) {
           type="password"
           required
           autoComplete="off"
-          hint={t("tokenHint")}
+          // Said only after a rejected submit, when the field really has
+          // been emptied and the person is about to wonder why.
+          hint={state.error ? t("tokenNotKept") : t("tokenHint")}
+        />
+
+        {/* Shown always rather than revealed when Nextcloud is chosen.
+            A conditional form would need client state to decide what to
+            render, which is a lot of machinery to hide two optional
+            fields — and it would stop working before hydration, which is
+            the bug this app already had once. The labels say who they are
+            for, and the server refuses a Nextcloud connection without an
+            account. */}
+        <TextField
+          label={t("usernameLabel")}
+          name="username"
+          autoComplete="off"
+          placeholder="ada"
+          hint={t("usernameHint")}
+          defaultValue={state.values?.username}
+        />
+        <TextField
+          label={t("remotePathLabel")}
+          name="remotePath"
+          autoComplete="off"
+          placeholder="Documents/Household"
+          hint={t("remotePathHint")}
+          defaultValue={state.values?.remotePath}
         />
         <ErrorLine error={state.error} />
         <Button type="submit" disabled={isPending || !hydrated || !keyringReady}>

@@ -33,6 +33,26 @@ export const integrationConnections = pgTable(
     provider: integrationProviderEnum("provider").notNull(),
     displayName: text("display_name").notNull(),
     baseUrl: text("base_url").notNull(),
+
+    /**
+     * The account the credential belongs to, where the provider needs one.
+     * Nextcloud's WebDAV path is per-account, so this is part of the
+     * address rather than part of the secret — and it is not a secret:
+     * it is a username the household already sees in their own Nextcloud.
+     * Null for providers that authenticate with a bare token.
+     */
+    username: text("username"),
+
+    /**
+     * The one folder this connection reads, relative to that account's
+     * files root. Null means the account root.
+     *
+     * Exists because integration-contracts.md says "do not mirror the full
+     * Nextcloud tree" — a connection is scoped to a folder, and a
+     * household that wants two folders makes two connections (ADR-024).
+     */
+    remotePath: text("remote_path"),
+
     enabled: boolean("enabled").notNull().default(true),
 
     /**
@@ -66,6 +86,18 @@ export const integrationConnections = pgTable(
     check(
       "integration_connection_sync_interval_floor",
       sql`${table.syncIntervalMinutes} is null or ${table.syncIntervalMinutes} >= 15`
+    ),
+    // Both become URL path segments. A `..` would reach a folder the
+    // household did not name, and a newline in a header-adjacent value is
+    // never anything but an attack. The adapter refuses them too; this
+    // makes it impossible for any other write path to store one.
+    check(
+      "integration_connection_remote_path_safe",
+      sql`${table.remotePath} is null or (${table.remotePath} !~ '(^|/)\\.\\.(/|$)' and ${table.remotePath} !~ '[\\r\\n]')`
+    ),
+    check(
+      "integration_connection_username_safe",
+      sql`${table.username} is null or (${table.username} <> '' and ${table.username} !~ '[/\\r\\n]')`
     ),
   ]
 );

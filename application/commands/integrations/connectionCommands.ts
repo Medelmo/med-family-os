@@ -49,7 +49,42 @@ const connectSchema = z.object({
       }
     }, "Use a full http:// or https:// address."),
   apiToken: z.string().min(1).max(2000),
-});
+
+  /**
+   * Nextcloud only. Its WebDAV path is per-account, so the username is
+   * part of the address — and it is not a secret, which is why it sits in
+   * an ordinary column while the app password is sealed (ADR-024).
+   *
+   * Refused if it could change the URL's shape: both of these become path
+   * segments, and a `/` or a newline in one is never anything but a
+   * mistake or an attack.
+   */
+  username: z
+    .string()
+    .trim()
+    .max(200)
+    .refine((value) => !/[/\r\n]/.test(value), "A username cannot contain a slash or a line break.")
+    .nullish(),
+
+  /** Nextcloud only: the one folder to read. Empty means the account root. */
+  remotePath: z
+    .string()
+    .trim()
+    .max(500)
+    .refine((value) => !/[\r\n]/.test(value), "A folder cannot contain a line break.")
+    .refine(
+      (value) => !value.split("/").some((segment) => segment === ".."),
+      "A folder path cannot step up out of itself."
+    )
+    .nullish(),
+})
+  .refine(
+    // A Nextcloud connection without an account cannot build a URL at all,
+    // and would fail on every sync with a message about WebDAV that tells
+    // the household nothing. Caught when it is configured instead.
+    (input) => input.provider !== "NEXTCLOUD" || Boolean(input.username?.trim()),
+    { path: ["username"], message: "Nextcloud needs the account the app password belongs to." }
+  );
 
 export type ConnectIntegrationInput = z.input<typeof connectSchema>;
 
@@ -86,6 +121,11 @@ export async function connectIntegration(actor: Actor, householdId: string, inpu
         provider: parsed.provider,
         displayName: parsed.displayName,
         baseUrl: parsed.baseUrl.replace(/\/+$/, ""),
+        // Stored as null rather than "" so "no folder configured" and
+        // "the account root" are the same thing and there is only one
+        // empty value to handle.
+        username: parsed.username?.trim() || null,
+        remotePath: parsed.remotePath?.trim().replace(/^\/+|\/+$/g, "") || null,
         createdBy: actor.userId,
       })
       .returning();

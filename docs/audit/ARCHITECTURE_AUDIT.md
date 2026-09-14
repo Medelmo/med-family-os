@@ -2272,3 +2272,109 @@ layout of the new schedule control was looked at, not assumed.
   visible on the integrations page and in the log, which is the same
   standard the outbox's terminal `FAILED` holds itself to. A notification
   would be the better answer and is cheap now that the state exists.
+
+## Nextcloud: a second provider, and a design-system bug it uncovered
+
+`docs/integrations/integration-contracts.md` on Nextcloud, in full:
+"Purpose: file links and optionally selected attachment storage. **Do not
+mirror the full Nextcloud tree.**" **ADR-024** records how that sentence
+became the design.
+
+### One folder, keyed on the file id
+
+A connection names one account and one folder; the listing is `Depth: 1`
+and subfolders are recognised and skipped. A household wanting two folders
+makes two connections, which also gives them two health rows and two
+schedules.
+
+The identity is `oc:fileid`, not the path. That is the decision the whole
+sync's idempotency rests on: a file id survives a rename and a move, so
+renaming a document in Nextcloud *updates* the household's reference and
+keeps their note and title override attached. Keying on the path would
+have created a second reference and orphaned the first — which the
+household would have experienced as their own notes silently detaching
+from their documents, with no error anywhere. Asserted in both the unit
+and the integration suites.
+
+`username` and `remote_path` are ordinary columns, not sealed values: an
+account name is not a secret, and the WebDAV path is per-account, so it is
+part of the address. Both become URL path segments, so both are
+constrained in three places — the command, a `CHECK`, and per-segment
+encoding — and a `..` is refused rather than resolved.
+
+### The multistatus reader, and why it is not an XML parser
+
+Hand-written, for two reasons. The ordinary one is that it reads one
+constrained document and takes four leaves out of each entry — the same
+call the project already made for CSV.
+
+The interesting one: **it does not resolve entities, and cannot.** No DTD
+handling, no external entities, no expansion — so XXE and billion-laughs
+are not mitigated here, they are absent. A general parser would have to be
+configured into that position and stay configured across upgrades. Both
+attacks are in the tests, asserting that nothing whatsoever happens.
+
+What that costs has to be said plainly, and is said in the file itself:
+this is not an XML parser and must never be described as one. It matches
+local names and does not understand namespaces, comments or mixed content
+properly. The mitigation is strictness plus tests against what a real
+Nextcloud sends — the folder as the first entry, the second `404` propstat
+whose empty elements would otherwise overwrite good values, other
+namespace prefixes, entity-escaped and percent-encoded filenames, CDATA,
+and an unterminated entry that must not take the rest of the listing down.
+
+### A design-system bug, found by a test that would not go green
+
+The new validation ("Nextcloud needs an account") made a rejected connect
+form reachable for the first time, and the E2E test that filled in the
+missing field and resubmitted kept failing for reasons that made no sense.
+Driving it by hand in a browser found two layers:
+
+**React 19 resets an uncontrolled form once its action completes**, error
+or not. So a rejected submit erased the address, the display name and the
+folder along with showing the error — pre-existing, and true of every
+failed attempt on that page since it was written. Fixed by handing the
+typed values back in the action's state. The token is deliberately *not*
+among them: echoing a credential would put it into the rendered HTML,
+which this page has been careful about since it was written, so the form
+says it was not kept and asks again.
+
+**And underneath it, a worse one.** Handing values back restored every
+text field and silently reverted every `<select>`. React maps an input's
+`defaultValue` onto its `value` attribute, which survives the reset; a
+`<select>` has no such attribute, its default lives in which `<option>`
+carries `selected`, and React sets that at mount only.
+
+On this page that meant a rejected Nextcloud connection came back with the
+provider quietly switched to Paperless. Submit again and the household
+would have got a different kind of connection from the one they asked for,
+with nothing indicating anything had changed. Fixed in `SelectField`, so
+every select in the application is covered rather than this one form, and
+asserted in the E2E.
+
+Neither was visible in a green suite. The first surfaced only because a
+test kept failing in a way that did not match the code; the second only by
+reading the actual DOM values after a failed submit.
+
+### Verified
+
+`tsc --noEmit`, `eslint .`, 697 unit and integration tests (48 new: 16 for
+the multistatus reader, 20 for the adapter, 12 end-to-end through the real
+adapter with only `fetch` stubbed), `next build`, and 197 E2E tests across
+desktop and mobile with the integrations journey now at 27.
+
+One pre-existing test needed changing: it created a Nextcloud connection
+with no account, which the new rule correctly refuses. The rule is right
+and the test predated it.
+
+### Not done
+
+- **CalDAV.** Still configurable and unreadable, and says so. Calendar
+  sync is a different shape from document sync — two-way, with a conflict
+  policy — and belongs with the calendar module rather than bolted onto
+  the document provider port.
+- **Incremental listing.** A `REPORT` with `sync-collection` (RFC 6578) is
+  the right answer for a large folder. Until a household has one, the 8 MB
+  and 5,000-entry caps fail loudly rather than degrading quietly.
+- **Attachment storage**, the "optionally" half of the contract's
+  sentence. Reading links is the useful half and the safe one.

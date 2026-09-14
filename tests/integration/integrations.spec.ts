@@ -126,6 +126,11 @@ describe("configuring a connection", () => {
       displayName: "Nextcloud",
       baseUrl: "https://cloud.internal",
       apiToken: "another-token",
+      // Required since the Nextcloud adapter landed: its WebDAV path is
+      // per-account, so a connection without one cannot build a URL. The
+      // provider is incidental to this test, which is about the AEAD
+      // binding household, connection and purpose into the tag.
+      username: "ada",
     });
 
     const [stolen] = await db
