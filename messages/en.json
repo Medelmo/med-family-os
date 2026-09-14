@@ -44,7 +44,8 @@
     "trips": "Trips",
     "assets": "Assets",
     "documents": "Documents",
-    "settings": "Settings"
+    "settings": "Settings",
+    "search": "Search"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -606,5 +607,25 @@
       "document": "Document"
     },
     "unlink": "Unlink"
+  },
+  "search": {
+    "title": "Search",
+    "description": "Everything the household has recorded, in one place.",
+    "label": "Search",
+    "placeholder": "A name, a word, a reference number",
+    "submit": "Search",
+    "hint": "Type something to search. Quote a phrase to match it exactly, or put a minus in front of a word to leave it out.",
+    "noResults": "Nothing matched {query}.",
+    "resultCount": "{count, plural, one {# result} other {# results}}",
+    "truncated": "Showing the closest matches. Narrow the search to see others.",
+    "type": {
+      "case": "Case",
+      "task": "Task",
+      "expense": "Expense",
+      "reimbursement": "Claim",
+      "trip": "Trip",
+      "asset": "Asset",
+      "document": "Document"
+    }
   }
 }

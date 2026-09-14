@@ -1,0 +1,109 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 720px;
+}
+
+.title {
+  font-size: var(--text-h1-size);
+  line-height: var(--text-h1-line);
+  margin: 0 0 var(--space-2);
+}
+
+.description {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+/* The field and the button sit on one line on a desktop and stack on a
+   phone, which is what `wrap` does on its own — no breakpoint needed. */
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.field {
+  /* Grow into the row, but never force it wider than the screen: the
+     basis is a floor for the one-line layout and the min-width lets it
+     shrink below it rather than overflow. */
+  flex: 1 1 16rem;
+  min-width: 0;
+  /* The shared field style carries a bottom margin for stacked forms;
+     this one is a row and spaces itself with `gap`. */
+  margin-bottom: 0;
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.resultsHeading {
+  margin: 0;
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.itemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.itemTitle {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-line);
+  /* A record's title can be one long unbroken string — a reference number,
+     a URL somebody pasted — and this page shows titles it did not choose. */
+  overflow-wrap: anywhere;
+}
+
+.type {
+  display: inline-block;
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+  font-weight: 600;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.meta {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+}
+
+.hint {
+  margin: 0;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}

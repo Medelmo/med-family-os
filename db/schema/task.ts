@@ -5,6 +5,7 @@ import { households } from "./household";
 import { people } from "./person";
 import { users } from "./auth";
 import { priorityEnum, sensitivityEnum, taskStatusEnum, visibilityEnum } from "./enums";
+import { tsvector } from "./search";
 
 export const tasks = pgTable(
   "task",
@@ -52,8 +53,13 @@ export const tasks = pgTable(
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     archivedAt: timestamp("archived_at", { mode: "date", withTimezone: true }),
     version: integer("version").notNull().default(1),
+    /** Generated and indexed by PostgreSQL; never read into JavaScript (ADR-022). */
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      sql`to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(next_action, '') || ' ' || coalesce(waiting_for, ''))`
+    ),
   },
   (table) => [
+    index("task_search_idx").using("gin", table.searchVector),
     // The access patterns that actually exist: every list view is scoped to
     // one household and filtered by status, and Today/Attention sort by due
     // date (docs/domain/erd.md: "indexes on householdId + lifecycle/date

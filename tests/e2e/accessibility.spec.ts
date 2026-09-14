@@ -88,6 +88,19 @@ test.describe("signed in", () => {
     await expectNoViolations(page);
   });
 
+  // Both states, because they are different pages: the search landmark and
+  // its field, and then a results list whose headings have to nest under
+  // the page's own.
+  test("search page has no automatically detectable WCAG violations", async ({ page }) => {
+    await page.goto("/search");
+    await expect(page.getByRole("heading", { name: "Search", level: 1 })).toBeVisible();
+    await expectNoViolations(page);
+
+    await page.goto("/search?q=appeal");
+    await expect(page.getByRole("searchbox", { name: "Search" })).toBeVisible();
+    await expectNoViolations(page);
+  });
+
   test("documents page has no automatically detectable WCAG violations", async ({ page }) => {
     await page.goto("/documents");
     await expect(page.getByRole("heading", { name: "Documents" })).toBeVisible();
@@ -111,7 +124,7 @@ test.describe("signed in", () => {
   // non-wrapping flex row, so each new destination pushed the page wider
   // until, at eight, a phone viewport overflowed and taps began landing on
   // the wrong element.
-  for (const path of ["/today", "/calendar", "/cases", "/inbox", "/notifications", "/more", "/finance", "/trips", "/assets", "/documents", "/settings", "/settings/integrations"]) {
+  for (const path of ["/today", "/calendar", "/cases", "/inbox", "/notifications", "/search", "/more", "/finance", "/trips", "/assets", "/documents", "/settings", "/settings/integrations"]) {
     test(`${path} does not scroll horizontally`, async ({ page }) => {
       await page.goto(path);
       const overflow = await page.evaluate(() => ({
@@ -177,6 +190,7 @@ test.describe("signed in", () => {
       "/inbox",
       "/attention",
       "/notifications",
+      "/search",
       "/tasks",
       "/cases",
       "/calendar",

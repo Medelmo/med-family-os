@@ -9,6 +9,7 @@ import {
   syncRunStatusEnum,
   visibilityEnum,
 } from "./enums";
+import { tsvector } from "./search";
 
 /**
  * A configured connection to an external system.
@@ -152,8 +153,13 @@ export const documentReferences = pgTable(
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     version: integer("version").notNull().default(1),
+    /** Generated and indexed by PostgreSQL; never read into JavaScript (ADR-022). */
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      sql`to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(title_override, '') || ' ' || coalesce(note, ''))`
+    ),
   },
   (table) => [
+    index("document_search_idx").using("gin", table.searchVector),
     // Idempotency for a re-run: the same provider document never lands
     // twice, whatever a sync does. This is the constraint that lets the
     // importer be a plain upsert instead of a check-then-insert race.

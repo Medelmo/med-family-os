@@ -44,7 +44,8 @@
     "trips": "Reisen",
     "assets": "Besitz",
     "documents": "Dokumente",
-    "settings": "Einstellungen"
+    "settings": "Einstellungen",
+    "search": "Suche"
   },
   "home": {
     "greeting": "Hallo, {name}",
@@ -606,5 +607,25 @@
       "document": "Dokument"
     },
     "unlink": "Trennen"
+  },
+  "search": {
+    "title": "Suche",
+    "description": "Alles, was der Haushalt erfasst hat, an einer Stelle.",
+    "label": "Suchen",
+    "placeholder": "Ein Name, ein Wort, ein Aktenzeichen",
+    "submit": "Suchen",
+    "hint": "Gib etwas ein, um zu suchen. Eine Wortgruppe in Anführungszeichen wird genau so gesucht; ein Minus vor einem Wort schließt es aus.",
+    "noResults": "Nichts gefunden für {query}.",
+    "resultCount": "{count, plural, one {# Treffer} other {# Treffer}}",
+    "truncated": "Es werden die besten Treffer gezeigt. Grenze die Suche ein, um weitere zu sehen.",
+    "type": {
+      "case": "Vorgang",
+      "task": "Aufgabe",
+      "expense": "Ausgabe",
+      "reimbursement": "Erstattung",
+      "trip": "Reise",
+      "asset": "Gegenstand",
+      "document": "Dokument"
+    }
   }
 }

@@ -17,6 +17,7 @@ import { households } from "./household";
 import { people } from "./person";
 import { users } from "./auth";
 import { expenseCategoryEnum, reimbursementStatusEnum, sensitivityEnum, visibilityEnum } from "./enums";
+import { tsvector } from "./search";
 
 /**
  * Money is stored as integer minor units in a `bigint`, never as a float
@@ -69,8 +70,13 @@ export const expenses = pgTable(
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     version: integer("version").notNull().default(1),
+    /** Generated and indexed by PostgreSQL; never read into JavaScript (ADR-022). */
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      sql`to_tsvector('simple', coalesce(description, '') || ' ' || coalesce(merchant, '') || ' ' || coalesce(notes, ''))`
+    ),
   },
   (table) => [
+    index("expense_search_idx").using("gin", table.searchVector),
     index("expense_household_incurred_idx").on(table.householdId, table.incurredOn),
     index("expense_household_category_idx").on(table.householdId, table.category),
     index("expense_reimbursement_idx").on(table.reimbursementId),
@@ -119,8 +125,13 @@ export const reimbursements = pgTable(
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     version: integer("version").notNull().default(1),
+    /** Generated and indexed by PostgreSQL; never read into JavaScript (ADR-022). */
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      sql`to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(counterparty, '') || ' ' || coalesce(external_reference, ''))`
+    ),
   },
   (table) => [
+    index("reimbursement_search_idx").using("gin", table.searchVector),
     index("reimbursement_household_status_idx").on(table.householdId, table.status),
     index("reimbursement_household_follow_up_idx").on(table.householdId, table.followUpAt),
     check("reimbursement_currency_iso", sql`${table.currency} ~ '^[A-Z]{3}$'`),

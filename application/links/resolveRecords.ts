@@ -1,11 +1,14 @@
 import { and, eq, inArray } from "drizzle-orm";
+import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
 import { db } from "../../infrastructure/db/client";
 import {
   assets,
+  casePeople,
   cases,
   documentReferences,
   expenses,
   reimbursements,
+  taskPeople,
   tasks,
   trips,
 } from "../../db/schema";
@@ -17,6 +20,11 @@ export interface ResolvedRecord {
   id: string;
   /** What to show. Already the household's own title where one exists. */
   label: string;
+  /**
+   * One line telling two similarly-named records apart — a status, a date.
+   * Link chips ignore it; search results show it.
+   */
+  detail: string | null;
   /** Where to go. Null when the type has no detail page yet. */
   href: string | null;
 }
@@ -91,9 +99,17 @@ async function loadByType(
         .select()
         .from(cases)
         .where(and(eq(cases.householdId, householdId), inArray(cases.id, ids)));
+      if (rows.length === 0) return [];
+      const scope = await peopleFor(casePeople.caseId, casePeople.personId, casePeople, ids);
       return rows
-        .filter((row) => visible(actor, row))
-        .map((row) => ({ type, id: row.id, label: row.title, href: `/cases/${row.id}` }));
+        .filter((row) => visible(actor, row, scope.get(row.id)))
+        .map((row) => ({
+          type,
+          id: row.id,
+          label: row.title,
+          detail: row.status,
+          href: `/cases/${row.id}`,
+        }));
     }
 
     case "task": {
@@ -101,9 +117,11 @@ async function loadByType(
         .select()
         .from(tasks)
         .where(and(eq(tasks.householdId, householdId), inArray(tasks.id, ids)));
+      if (rows.length === 0) return [];
+      const scope = await peopleFor(taskPeople.taskId, taskPeople.personId, taskPeople, ids);
       return rows
-        .filter((row) => visible(actor, row))
-        .map((row) => ({ type, id: row.id, label: row.title, href: "/tasks" }));
+        .filter((row) => visible(actor, row, scope.get(row.id)))
+        .map((row) => ({ type, id: row.id, label: row.title, detail: row.status, href: "/tasks" }));
     }
 
     case "expense": {
@@ -112,11 +130,12 @@ async function loadByType(
         .from(expenses)
         .where(and(eq(expenses.householdId, householdId), inArray(expenses.id, ids)));
       return rows
-        .filter((row) => visible(actor, row, row.personId))
+        .filter((row) => visible(actor, row, row.personId ? [row.personId] : undefined))
         .map((row) => ({
           type,
           id: row.id,
           label: row.description,
+          detail: row.incurredOn,
           href: `/finance?month=${row.incurredOn.slice(0, 7)}`,
         }));
     }
@@ -128,7 +147,13 @@ async function loadByType(
         .where(and(eq(reimbursements.householdId, householdId), inArray(reimbursements.id, ids)));
       return rows
         .filter((row) => visible(actor, row))
-        .map((row) => ({ type, id: row.id, label: row.title, href: `/finance/claims/${row.id}` }));
+        .map((row) => ({
+          type,
+          id: row.id,
+          label: row.title,
+          detail: row.status,
+          href: `/finance/claims/${row.id}`,
+        }));
     }
 
     case "trip": {
@@ -138,7 +163,13 @@ async function loadByType(
         .where(and(eq(trips.householdId, householdId), inArray(trips.id, ids)));
       return rows
         .filter((row) => visible(actor, row))
-        .map((row) => ({ type, id: row.id, label: row.title, href: `/trips/${row.id}` }));
+        .map((row) => ({
+          type,
+          id: row.id,
+          label: row.title,
+          detail: row.startsOn,
+          href: `/trips/${row.id}`,
+        }));
     }
 
     case "asset": {
@@ -147,8 +178,14 @@ async function loadByType(
         .from(assets)
         .where(and(eq(assets.householdId, householdId), inArray(assets.id, ids)));
       return rows
-        .filter((row) => visible(actor, row, row.personId))
-        .map((row) => ({ type, id: row.id, label: row.name, href: `/assets/${row.id}` }));
+        .filter((row) => visible(actor, row, row.personId ? [row.personId] : undefined))
+        .map((row) => ({
+          type,
+          id: row.id,
+          label: row.name,
+          detail: row.location,
+          href: `/assets/${row.id}`,
+        }));
     }
 
     case "document": {
@@ -164,10 +201,45 @@ async function loadByType(
           // The household's own title where there is one — the same rule
           // the documents page follows.
           label: row.titleOverride ?? row.title,
+          detail: row.documentDate,
           href: "/documents",
         }));
     }
   }
+}
+
+/**
+ * The people a set of tasks or cases is *about*.
+ *
+ * Tasks and cases keep their person scope in a join table rather than a
+ * column, and an earlier version of this file simply did not load it — so
+ * every resolved task and case was authorized as if it were about nobody.
+ * For a CHILD that fails safe (absence of scoping data means deny), but for
+ * an ADULT or VIEWER it fails *open*: `canAccess` only enforces person
+ * scope when it is given some, so a case about one person was readable
+ * through a link by an adult the cases list would have hidden it from.
+ *
+ * The docblock above this function already claimed each branch passed "the
+ * people it is about". Now it does.
+ */
+async function peopleFor(
+  recordColumn: PgColumn,
+  personColumn: PgColumn,
+  table: PgTable,
+  ids: string[]
+): Promise<Map<string, string[]>> {
+  const rows = await db
+    .select({ recordId: recordColumn, personId: personColumn })
+    .from(table)
+    .where(inArray(recordColumn, ids));
+
+  const byRecord = new Map<string, string[]>();
+  for (const row of rows) {
+    const existing = byRecord.get(row.recordId as string);
+    if (existing) existing.push(row.personId as string);
+    else byRecord.set(row.recordId as string, [row.personId as string]);
+  }
+  return byRecord;
 }
 
 interface AuthorizableRow {
@@ -177,12 +249,15 @@ interface AuthorizableRow {
   createdBy: string | null;
 }
 
-function visible(actor: Actor, row: AuthorizableRow, personId?: string | null): boolean {
+function visible(actor: Actor, row: AuthorizableRow, personScopeIds?: string[]): boolean {
   return canAccess(actor, "read", {
     householdId: row.householdId,
     visibility: row.visibility,
     sensitivity: row.sensitivity,
     ownerUserId: row.createdBy ?? undefined,
-    personScopeIds: personId ? [personId] : undefined,
+    // Undefined, not an empty array: `canAccess` treats an empty scope as
+    // "not scoped to anybody in particular", and passing `[]` would read
+    // identically but invites the next reader to think it means "nobody".
+    personScopeIds: personScopeIds?.length ? personScopeIds : undefined,
   });
 }

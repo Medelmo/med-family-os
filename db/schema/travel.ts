@@ -4,6 +4,7 @@ import { households } from "./household";
 import { people } from "./person";
 import { users } from "./auth";
 import { sensitivityEnum, tripItemKindEnum, tripStatusEnum, verificationStatusEnum, visibilityEnum } from "./enums";
+import { tsvector } from "./search";
 
 /**
  * docs/domain/domain-model.md: "A bounded travel context."
@@ -39,8 +40,13 @@ export const trips = pgTable(
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     version: integer("version").notNull().default(1),
+    /** Generated and indexed by PostgreSQL; never read into JavaScript (ADR-022). */
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      sql`to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(destination, '') || ' ' || coalesce(notes, ''))`
+    ),
   },
   (table) => [
+    index("trip_search_idx").using("gin", table.searchVector),
     index("trip_household_starts_idx").on(table.householdId, table.startsOn),
     index("trip_household_status_idx").on(table.householdId, table.status),
     // A trip that ends before it starts is not a trip. The domain refuses

@@ -4,6 +4,7 @@ import { households } from "./household";
 import { people } from "./person";
 import { users } from "./auth";
 import { assetCategoryEnum, sensitivityEnum, visibilityEnum } from "./enums";
+import { tsvector } from "./search";
 
 const money = (name: string) => bigint(name, { mode: "number" });
 
@@ -49,8 +50,13 @@ export const assets = pgTable(
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     version: integer("version").notNull().default(1),
+    /** Generated and indexed by PostgreSQL; never read into JavaScript (ADR-022). */
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      sql`to_tsvector('simple', coalesce(name, '') || ' ' || coalesce(manufacturer, '') || ' ' || coalesce(identifier, '') || ' ' || coalesce(location, ''))`
+    ),
   },
   (table) => [
+    index("asset_search_idx").using("gin", table.searchVector),
     index("asset_household_category_idx").on(table.householdId, table.category),
     check("asset_currency_iso", sql`${table.currency} is null or ${table.currency} ~ '^[A-Z]{3}$'`),
     check(

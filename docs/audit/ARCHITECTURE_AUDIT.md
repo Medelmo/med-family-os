@@ -2000,3 +2000,157 @@ bundle.
   right for "the thing I was just looking at" and wrong for a household
   with three years of documents. Screen 44 in the inventory is Search, and
   it is now the obvious next gap.
+
+## Global search: the last experience-layer view
+
+`docs/design/screen-inventory.md` §4 lists Global search among the three
+screens that exist before any feature does, and
+`docs/requirements/product-spec.md` puts it under Retrieve: "Global search
+and contextual links make information discoverable". Links landed first;
+this is the other half. **ADR-022** records the decisions, implementing
+ADR-003's "start with PostgreSQL full-text search" — which chose the
+technology in one sentence and left every real question open.
+
+### The index is a generated column
+
+Seven tables gained
+
+```sql
+search_vector tsvector GENERATED ALWAYS AS (to_tsvector('simple', …)) STORED
+```
+
+and a GIN index, in migration `0011`.
+
+The alternative was a `search_document` table this application writes, or
+a trigger, or an outbox-driven reindex — a second copy of the truth, and
+every copy needs a story for what happens when the two disagree. A
+generated column cannot disagree with its row. A title corrected by a
+form, an importer, a sync run or somebody's `psql` session is searchable
+immediately and by construction, and there is no reindex job to run,
+remember after a migration, or monitor.
+
+### `simple`, and what it costs
+
+A generated column's expression must be immutable, so the text search
+configuration has to be named in the DDL, and naming one means choosing.
+This household writes German and English in the same sentence
+("Pflegegrad appeal"). `german` stems German and mangles English;
+`english` does the reverse. Either would quietly degrade half the
+household's own data — and quietly is the problem, because nobody ever
+sees why a search missed.
+
+`simple` stems nothing: it folds case, splits on word boundaries, and
+stops. That means "Antrag" does not find "Anträge", and "Muller" does not
+find "Müller". The second is asserted by a test so it is documented
+behaviour rather than a surprise report. The fix, if the household
+actually minds, is `unaccent` plus a language-tagged second column —
+additive, and better decided from complaints than in advance.
+
+### `websearch_to_tsquery`, because a search box must not 500
+
+`to_tsquery` raises a syntax error on `a & | b`, an unclosed quote, a
+trailing operator, a bare `-` — all things a person types. From a search
+box that means the page fails because somebody typed.
+`websearch_to_tsquery` never raises and understands the syntax people
+already know: quoted phrases, `or`, `-` to exclude. Seven such inputs are
+asserted not to throw.
+
+### The security decision: search never holds a title
+
+Same rule as links, and for the same reason: **a record appears in results
+only if the actor may read it.** A result list showing titles the reader
+cannot open is an enumeration channel for precisely the records a
+sensitivity level protects, and for most records the title *is* the
+disclosure — "Consultant's letter" tells a child most of what was being
+protected.
+
+What makes this structural rather than careful is that
+`application/queries/search/search.ts` selects **only ids and ranks**. It
+never reads a title, description, note or merchant. It hands the bare ids
+to `resolveRecords` — the same function links use — which is the one place
+that decides what a record is called and whether this actor may see it.
+
+Search therefore cannot leak a title, because it never has one. And search
+cannot drift away from links, because they are not two implementations of
+one rule; they are one implementation.
+
+Withheld rows are absent, with no count: "3 results you may not see" is
+itself the disclosure, and a test asserts the result object has no such
+field.
+
+### A real authorization bug, found by building on top of it
+
+Concentrating both features on `resolveRecords` is the point, and it is
+also a standing hazard: a defect there is now a defect in both. Building
+search found exactly such a defect.
+
+Tasks and cases keep their person scope in a join table (`task_person`,
+`case_person`) rather than a column, and `resolveRecords` was not loading
+it. Its own docblock claimed each branch passed "the people it is about".
+It did not.
+
+For a `CHILD` that fails safe — the kernel requires explicit scoping, so
+missing scope means deny. For an `ADULT` or `VIEWER` it fails **open**:
+`canAccess` enforces person scope only when it is given some, so a case
+about one household member was readable through a link by an adult whom
+the cases list hides it from. Search would have multiplied that from "a
+link somebody already made" to "type a word".
+
+Fixed, and the regression test was confirmed to fail without the fix
+rather than being taken on trust:
+
+```
+AssertionError: expected [ { type: 'case', …(4) } ] to deeply equal []
+```
+
+### The page is a document
+
+`/search?q=…` is a plain `<form method="get">` — no Server Action. Three
+consequences, none incidental:
+
+- It works before hydration and with JavaScript off entirely. Every other
+  form in this app had to be taught to disable itself until React takes
+  over (`useHydrated`, the app-wide dead-click bug from Phase 5); a GET
+  form needs no rescue because the browser submits it. A Playwright
+  context with `javaScriptEnabled: false` asserts this.
+- The back button and bookmarks behave. A result list is a place and
+  should have an address.
+- There is nothing on the page that could mutate.
+
+The term does land in the URL, against CLAUDE.md's rule about sensitive
+data in URLs. The judgement, recorded in both ADR-022 and
+`docs/security/security-model.md`: a search term is the household's own
+words rather than a record's contents, the address never leaves their own
+machine, and the one place this application writes a URL is the request
+log, which records `pathname` and never the query string. **If that ever
+changes, `/search` must become a POST-and-redirect** — written down
+because nothing else depends on that property, so it could be broken
+without anyone noticing.
+
+### One UI defect, found by looking
+
+`resolveRecords` returns the raw column as a result's second line, and for
+cases, tasks and claims that column is a status enum. The first render of
+the page showed a case as **`ACTIVE`** — untranslated, shouty, and a
+different word from the "Open" the cases list shows for the same record.
+Nothing in the test suite objects to a string being wrong; it was visible
+in the first screenshot. The page now translates through the same message
+keys each record's own page uses, and dates through the same midday-UTC
+formatting the calendar uses so a `DATE` cannot render as the day before.
+
+### Verified
+
+`tsc --noEmit`, `eslint .`, 610 unit and integration tests (22 new),
+`next build`, and 185 E2E tests against the standalone bundle (2 skipped
+by project gate) — 12 new search journeys across the desktop and mobile
+projects, plus axe checks on both the empty and the populated state and a
+horizontal-overflow guard on `/search`.
+
+### Not done
+
+- **The command palette** (screen 5). Search is a page; a keyboard-first
+  overlay is a different interaction and a larger piece of work.
+- **Stemming and diacritic folding**, deliberately — see above.
+- **Searching notes, timeline entries and trip items.** Adding an
+  aggregate to search is a migration plus one more `matchIds` call, so
+  this is cheap when somebody misses it.

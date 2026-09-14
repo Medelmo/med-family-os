@@ -33,6 +33,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/inbox", labelKey: "inbox", primary: true },
   { href: "/attention", labelKey: "attention", primary: true },
   { href: "/notifications", labelKey: "notifications", shortLabelKey: "notificationsShort", primary: true },
+  { href: "/search", labelKey: "search", primary: false },
   { href: "/tasks", labelKey: "tasks", primary: false },
   { href: "/cases", labelKey: "cases", primary: false },
   { href: "/calendar", labelKey: "calendar", primary: false },

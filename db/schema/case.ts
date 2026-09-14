@@ -5,6 +5,7 @@ import { people } from "./person";
 import { tasks } from "./task";
 import { users } from "./auth";
 import { caseStatusEnum, priorityEnum, sensitivityEnum, visibilityEnum } from "./enums";
+import { tsvector } from "./search";
 
 /**
  * docs/domain/domain-model.md: "A real-world process with a lifecycle,
@@ -50,8 +51,13 @@ export const cases = pgTable(
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     version: integer("version").notNull().default(1),
+    /** Generated and indexed by PostgreSQL; never read into JavaScript (ADR-022). */
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      sql`to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(description, '') || ' ' || coalesce(next_action, '') || ' ' || coalesce(external_reference, ''))`
+    ),
   },
   (table) => [
+    index("case_search_idx").using("gin", table.searchVector),
     index("case_household_status_idx").on(table.householdId, table.status),
     index("case_household_follow_up_idx").on(table.householdId, table.followUpAt),
   ]
