@@ -102,6 +102,9 @@
    signal, never the only one (CLAUDE.md §13). */
 .health,
 .status {
+  /* Shrink to the words. The claim detail page renders this as a <p>,
+     which would otherwise stretch a small badge across the whole column. */
+  display: inline-block;
   font-size: var(--text-compact-size);
   line-height: var(--text-compact-line);
   font-weight: 600;
