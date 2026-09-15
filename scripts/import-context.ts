@@ -48,6 +48,14 @@ type Item =
       description?: string;
       nextAction?: string;
       priority?: "LOW" | "NORMAL" | "HIGH" | "CRITICAL";
+      /*
+       * Default HOUSEHOLD/NORMAL, as the command does. Set them for
+       * anything a child should not read: a diagnosis, a benefits file,
+       * a legal matter naming someone. Getting this wrong is silent —
+       * the case looks fine until the day another member is added.
+       */
+      visibility?: "PRIVATE" | "HOUSEHOLD" | "SHARED";
+      sensitivity?: "NORMAL" | "SENSITIVE" | "HIGHLY_SENSITIVE";
       /** false leaves it in DRAFT — for a matter that is not live yet. */
       activate?: boolean;
     };
@@ -204,7 +212,8 @@ async function main() {
     }
 
     if (!apply) {
-      console.log(`  would  [${item.kind}] ${shortLabel}`);
+      const tag = item.kind === "case" && item.sensitivity && item.sensitivity !== "NORMAL" ? `  <${item.sensitivity}>` : "";
+      console.log(`  would  [${item.kind}] ${shortLabel}${tag}`);
       created += 1;
       continue;
     }
@@ -220,6 +229,8 @@ async function main() {
           nextAction: item.nextAction ?? null,
           priority: item.priority ?? "NORMAL",
           activate: item.activate ?? true,
+          visibility: item.visibility ?? "HOUSEHOLD",
+          sensitivity: item.sensitivity ?? "NORMAL",
         });
         existing.cases.add(label);
       }

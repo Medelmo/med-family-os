@@ -15,6 +15,24 @@ const createCaseSchema = z.object({
   aboutPersonIds: z.array(z.string().uuid()).default([]),
   /** Opens the case immediately instead of leaving it in DRAFT. */
   activate: z.boolean().default(true),
+  /*
+   * Both default to the column defaults, so every existing caller is
+   * unaffected — but they are now *sayable*, which they were not.
+   *
+   * CLAUDE.md §5 requires every protected resource to carry a visibility
+   * and a sensitivity, and the `case` table has carried both since the
+   * schema was written. There was simply no way to set them at creation:
+   * the authorize call below passed the literals "HOUSEHOLD"/"NORMAL" and
+   * the insert relied on the column defaults, so every case ever created
+   * was NORMAL regardless of what it was about.
+   *
+   * That gap only became visible when a bulk import of real household
+   * matters needed to open a case about a diagnosis. Writing that as
+   * NORMAL/HOUSEHOLD would make it readable by a CHILD account the day one
+   * is added — the exact failure the sensitivity column exists to prevent.
+   */
+  visibility: z.enum(["PRIVATE", "HOUSEHOLD", "SHARED"]).default("HOUSEHOLD"),
+  sensitivity: z.enum(["NORMAL", "SENSITIVE", "HIGHLY_SENSITIVE"]).default("NORMAL"),
 });
 
 // z.input, not z.infer: z.infer is the *output* type, in which every
@@ -33,10 +51,15 @@ export type CreateCaseInput = z.input<typeof createCaseSchema>;
 export async function createCase(actor: Actor, householdId: string, input: CreateCaseInput) {
   const parsed = createCaseSchema.parse(input);
 
+  // The policy now sees what is actually being created rather than two
+  // hard-coded literals. That matters in one direction specifically: a
+  // role permitted to open an ordinary case is not thereby permitted to
+  // open a HIGHLY_SENSITIVE one, and asking with the real values is what
+  // lets the policy say so.
   const authorized = authorizeCaseAccess(actor, "create", {
     householdId,
-    visibility: "HOUSEHOLD",
-    sensitivity: "NORMAL",
+    visibility: parsed.visibility,
+    sensitivity: parsed.sensitivity,
     createdBy: actor.userId,
     personScopeIds: parsed.aboutPersonIds,
   });
@@ -52,6 +75,8 @@ export async function createCase(actor: Actor, householdId: string, input: Creat
         status: parsed.activate ? "ACTIVE" : "DRAFT",
         priority: parsed.priority,
         nextAction: parsed.nextAction ?? null,
+        visibility: parsed.visibility,
+        sensitivity: parsed.sensitivity,
         ownerPersonId: parsed.ownerPersonId ?? null,
         createdBy: actor.userId,
       })
