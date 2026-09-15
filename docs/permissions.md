@@ -13,6 +13,7 @@
 | Audit | full | security-relevant own activity only | none | none |
 | Integrations | full | none by default | none | none |
 | Backup status | full | none | none | none |
+| Assistant | full | on cases they may change | none | none |
 | Export | own visible records | own visible records | own visible records | own visible records |
 
 Two rows need their reasoning stated, because neither is obvious from the
@@ -25,6 +26,12 @@ counts per table, including tables the reader is filtered out of. "There
 are 14 documents" told to somebody who can open three is the aggregate
 form of exactly the enumeration that search and context links are both
 careful to prevent.
+
+**Assistant** follows the case it is about, not a role of its own: asking
+for a suggestion needs permission to *change* that case, because proposing
+an edit to somebody who could never apply it is an interface lying about
+what it can do. Accepting one runs the ordinary command, so it is refused
+by the same check as typing the change by hand (ADR-027).
 
 **Export** is not a role at all — it is every role, bounded by what that
 role can already read. A child's export is small. An export is never a way

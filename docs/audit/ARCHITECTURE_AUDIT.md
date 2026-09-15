@@ -2737,3 +2737,103 @@ at on a phone, and the voice was confirmed actually firing
 - **German voice quality depends on the machine.** The app asks for the
   best local `de-*` voice it can find; how good that is belongs to the
   operating system, not to this application.
+
+## Phase 8: an assistant that cannot write anything
+
+The last phase, gated since Phase 0 on "authorization, audit and
+provenance foundations proven". The first two are now exercised hard; this
+builds the third. **ADR-027** records the decisions.
+
+### The rule that looked like it banned the feature
+
+The brief says *never expose sensitive data in logs, analytics, exception
+messages, URLs, notifications, **AI prompts**, telemetry*. Read literally
+that bans AI from this application: a household operating system's records
+are almost all SENSITIVE by default, so a model restricted to NORMAL can
+summarise nothing worth summarising.
+
+The distinction the rule is actually drawing is **where the data goes**.
+Every other channel it names is a place data leaves the household. A model
+on the household's own machine is not one of those places; a hosted API
+unambiguously is.
+
+So locality became part of the provider *interface* rather than its
+configuration, and it sets the ceiling: remote sees NORMAL, local may also
+see SENSITIVE, nothing sees HIGHLY_SENSITIVE. Above the ceiling nothing is
+described — not the title, not that the record exists — and the refusal is
+audited, because "the assistant was asked and was told nothing" is exactly
+what a household should be able to check.
+
+Locality is never inferred. "localhost means local" is true right up until
+somebody puts a proxy in front of a hosted API, and a wrong guess there is
+a data leak rather than a misconfiguration — so an unrecognised value
+disables the assistant rather than defaulting to permissive. Five ways of
+getting it wrong are asserted, including `"localhost"` itself.
+
+### Why "AI cannot mutate sensitive records" needed no rule about AI
+
+`acceptSuggestion` does not apply the suggestion. It calls
+`setCaseNextAction` — the same function the form calls — with the
+accepting person as the actor, through the same policy kernel, state
+machine, concurrency check and audit trail.
+
+There is no code path from a model's output to a row. There is only a path
+from a person's decision to a row, and that path already existed. A rule
+can be forgotten in a new code path; an absent path cannot.
+
+The `expectedVersion` handed to that command is the version the model was
+*shown*, taken from the provenance — so the ordinary optimistic-concurrency
+check is also the staleness check. Advice about a case somebody has since
+dealt with is refused by the mechanism that already stops two people
+overwriting each other, and the human's own work survives untouched. That
+is asserted.
+
+### Two defects the local model found that no stub would have
+
+Pointing the app at a real Ollama on this machine was worth more than any
+amount of mocking:
+
+**A reasoning model returns an empty answer.** qwen3 emits its chain of
+thought in a separate field and only then writes a reply — so with a
+budget sized for the answer it returned `content: ""` and
+`finish_reason: "length"`, every time. My adapter called that "malformed",
+which points the household at their server when the problem is the budget.
+Now reported as `unusable`, and the budget raised from 60 to 512 tokens —
+the budget governs the model's *process*, while the output guard still
+refuses anything longer than a next action.
+
+**A cold 7B model on CPU took 62 seconds**, past the 45-second timeout, so
+every first request of the day would have failed. The timeout is now 120s
+and configurable. The failure itself was correct throughout — "The
+assistant took too long to answer", in this application's own words, never
+the provider's.
+
+And one scrubber gap, found by its own first test run: `Bearer sk-live-…`
+has no `:` or `=`, so the keyword-and-separator pattern missed the single
+commonest way a credential appears in text.
+
+### Verified
+
+`tsc --noEmit`, `eslint .`, **803 unit and integration tests** (31 new for
+this phase: the six-cell disclosure matrix in full, the state machine, the
+adapter against stubbed fetch *and* against a real loopback HTTP server),
+`next build`, and the E2E suite with a new journey asserting that an
+unconfigured deployment shows no assistant at all and every ordinary thing
+on the page still works.
+
+The pipeline was also driven end to end in a browser against the real
+Ollama on this machine: the section appears only with configuration
+present, the request goes out, and the timeout path renders correctly.
+
+### Not done
+
+- **Document summarisation, structured extraction, and free questions over
+  the household's records.** Each is a much larger disclosure surface than
+  one case, and the capability built first is the one the attention engine
+  already says is missing — a case with no next action.
+- **The success path against a real model, in a browser.** The model on
+  this machine takes minutes per answer; the success path is covered by 21
+  integration tests and by the HTTP-level adapter tests instead.
+- **Storing the assembled prompt.** Reconstructible from `promptVersion`
+  and the sources, and storing it would put a second copy of household
+  data in a table that has no sensitivity of its own.

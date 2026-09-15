@@ -7,6 +7,11 @@ import { AuthorizationError, NotFoundError } from "../../../../application/error
 import { getLinksFor } from "../../../../application/commands/links/linkRecords";
 import { getLinkCandidates } from "../../../../application/links/linkCandidates";
 import { AddNoteForm, CaseActions, NextActionForm, type CaseStatusName } from "./CaseDetailClient";
+import { AskAssistantForm, SuggestionCard, type SuggestionView } from "./AssistantClient";
+import {
+  assistantAvailable,
+  getOpenSuggestions,
+} from "../../../../application/commands/ai/suggestCaseActions";
 import { LinkRecordForm, UnlinkForm } from "./LinksClient";
 import { Card } from "../../../../components/ui/Card";
 import styles from "./caseDetail.module.css";
@@ -15,6 +20,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ cas
   const { caseId } = await params;
   const { actor, householdId } = await requireActor();
   const t = await getTranslations("cases");
+  const tAssistant = await getTranslations("assistant");
   const format = await getFormatter();
 
   let detail;
@@ -29,10 +35,27 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ cas
   }
 
   const tLinks = await getTranslations("links");
-  const [links, candidates] = await Promise.all([
+  const [links, candidates, openSuggestions] = await Promise.all([
     getLinksFor(actor, householdId, { type: "case", id: caseId }),
     getLinkCandidates(actor, householdId),
+    getOpenSuggestions(actor, householdId, caseId),
   ]);
+
+  const assistant = assistantAvailable();
+
+  // Flattened for the client component: a Server Component may not hand a
+  // Date across the boundary inside an arbitrary object, and the shape a
+  // card needs is narrower than the row anyway.
+  const suggestions: SuggestionView[] = openSuggestions.map((suggestion) => ({
+    id: suggestion.id,
+    nextAction: String((suggestion.payload as { nextAction?: unknown }).nextAction ?? ""),
+    model: suggestion.provenance.model,
+    locality: suggestion.provenance.locality,
+    promptVersion: suggestion.provenance.promptVersion,
+    generatedAt: new Date(suggestion.provenance.generatedAt).toISOString(),
+    withheld: suggestion.provenance.withheld ?? [],
+    redacted: suggestion.provenance.redacted ?? [],
+  }));
 
   return (
     <div className={styles.page}>
@@ -54,6 +77,28 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ cas
       <Card>
         <h2 className={styles.sectionTitle}>{t("nextActionTitle")}</h2>
         <NextActionForm caseId={detail.id} version={detail.version} nextAction={detail.nextAction} />
+
+        {/*
+          The assistant, and only when there is one.
+          CLAUDE.md §11: "AI is optional and cannot be required for core
+          operation" — so an unconfigured deployment shows nothing here at
+          all, rather than a disabled control advertising a feature the
+          household has not chosen to run.
+        */}
+        {assistant && (
+          <section aria-labelledby="assistant-heading" className={styles.assistantBlock}>
+            <h3 id="assistant-heading" className={styles.sectionTitle}>
+              {tAssistant("title")}
+            </h3>
+            <p className={styles.description}>{tAssistant("intro")}</p>
+
+            {suggestions.map((suggestion) => (
+              <SuggestionCard key={suggestion.id} caseId={detail.id} suggestion={suggestion} />
+            ))}
+
+            <AskAssistantForm caseId={detail.id} />
+          </section>
+        )}
 
         <dl className={styles.meta}>
           {detail.status === "WAITING" && detail.waitingFor && (

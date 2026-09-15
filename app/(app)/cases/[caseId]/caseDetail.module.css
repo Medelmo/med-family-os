@@ -226,3 +226,10 @@
   color: var(--color-critical);
   font-size: var(--text-compact-size);
 }
+
+/* The assistant sits inside the next-action card, separated by a rule. */
+.assistantBlock {
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border);
+}

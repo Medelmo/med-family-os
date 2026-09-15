@@ -4,7 +4,7 @@ import { caseEvents, casePeople, caseTasks, cases, people, tasks } from "../../.
 import { authorizeCaseAccess } from "../../policies/case";
 import type { Actor } from "../../policies/authorize";
 import { OPEN_CASE_STATUSES, type CaseStatus } from "../../../domain/cases/case";
-import type { Priority } from "../../../domain/shared/types";
+import type { Priority, Sensitivity } from "../../../domain/shared/types";
 import { AuthorizationError, NotFoundError } from "../../errors";
 
 export interface CaseListItem {
@@ -20,6 +20,13 @@ export interface CaseListItem {
   blockedReason: string | null;
   ownerName: string | null;
   version: number;
+  /**
+   * Carried on the projection because callers need to make decisions
+   * *about* it, not only be filtered by it — the assistant's disclosure
+   * gate has to know how sensitive a case is before deciding whether a
+   * model may be told anything at all about it (ADR-027).
+   */
+  sensitivity: Sensitivity;
 }
 
 function toListItem(row: typeof cases.$inferSelect, ownerName: string | null): CaseListItem {
@@ -36,6 +43,7 @@ function toListItem(row: typeof cases.$inferSelect, ownerName: string | null): C
     blockedReason: row.blockedReason,
     ownerName,
     version: row.version,
+    sensitivity: row.sensitivity,
   };
 }
 

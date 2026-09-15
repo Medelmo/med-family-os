@@ -742,5 +742,31 @@
     "androidLabel": "The household assistant, waking to greet you",
     "blockedNote": "Your browser only allows sound after you interact with the page. Press Play greeting to hear it.",
     "unavailableNote": "This device has no voice for your language, so the greeting is shown rather than spoken."
+  },
+  "assistant": {
+    "title": "Assistant",
+    "intro": "A model can propose a next action. Nothing it proposes changes anything until you accept it.",
+    "ask": "Ask for a suggestion",
+    "asking": "Asking…",
+    "proposed": "Suggested, not applied",
+    "accept": "Use this",
+    "reject": "Dismiss",
+    "model": "Model",
+    "generated": "Suggested",
+    "prompt": "Prompt",
+    "localityLocal": "On your machine",
+    "localityRemote": "Sent off your network",
+    "withheld": "{count, plural, one {One part of this case was too sensitive to show the model.} other {# parts of this case were too sensitive to show the model.}}",
+    "redacted": "Something that looked like a password or key was removed before the model saw it.",
+    "nothingToSuggest": "Nothing obvious to suggest for this case.",
+    "errorNotConfigured": "No assistant is set up for this household.",
+    "errorUnreachable": "The assistant could not be reached.",
+    "errorTimeout": "The assistant took too long to answer.",
+    "errorRefused": "The assistant refused the request. Check its key.",
+    "errorMalformed": "The assistant returned something this app could not read.",
+    "errorUnusable": "The assistant did not suggest anything usable.",
+    "errorNotAuthorized": "You are not permitted to change this case.",
+    "errorConflict": "This case changed since the suggestion was made. Ask again.",
+    "errorNotFound": "That suggestion is no longer there."
   }
 }

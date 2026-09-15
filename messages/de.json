@@ -742,5 +742,31 @@
     "androidLabel": "Der Haushaltsassistent erwacht und begrüßt dich",
     "blockedNote": "Dein Browser lässt Ton erst nach einer Interaktion zu. Tippe auf „Begrüßung abspielen“, um sie zu hören.",
     "unavailableNote": "Auf diesem Gerät gibt es keine Stimme für deine Sprache — die Begrüßung wird angezeigt statt gesprochen."
+  },
+  "assistant": {
+    "title": "Assistent",
+    "intro": "Ein Modell kann einen nächsten Schritt vorschlagen. Nichts davon ändert etwas, bevor du es übernimmst.",
+    "ask": "Vorschlag anfordern",
+    "asking": "Frage …",
+    "proposed": "Vorgeschlagen, nicht übernommen",
+    "accept": "Übernehmen",
+    "reject": "Verwerfen",
+    "model": "Modell",
+    "generated": "Vorgeschlagen",
+    "prompt": "Prompt",
+    "localityLocal": "Auf deinem Rechner",
+    "localityRemote": "Verlässt dein Netzwerk",
+    "withheld": "{count, plural, one {Ein Teil dieses Vorgangs war zu sensibel, um ihn dem Modell zu zeigen.} other {# Teile dieses Vorgangs waren zu sensibel, um sie dem Modell zu zeigen.}}",
+    "redacted": "Etwas, das wie ein Passwort oder Schlüssel aussah, wurde vorher entfernt.",
+    "nothingToSuggest": "Für diesen Vorgang gibt es nichts Naheliegendes vorzuschlagen.",
+    "errorNotConfigured": "Für diesen Haushalt ist kein Assistent eingerichtet.",
+    "errorUnreachable": "Der Assistent war nicht erreichbar.",
+    "errorTimeout": "Der Assistent hat zu lange gebraucht.",
+    "errorRefused": "Der Assistent hat die Anfrage abgelehnt. Prüfe den Schlüssel.",
+    "errorMalformed": "Der Assistent hat etwas zurückgegeben, das diese App nicht lesen konnte.",
+    "errorUnusable": "Der Assistent hat nichts Brauchbares vorgeschlagen.",
+    "errorNotAuthorized": "Du darfst diesen Vorgang nicht ändern.",
+    "errorConflict": "Der Vorgang hat sich seit dem Vorschlag geändert. Frage erneut.",
+    "errorNotFound": "Diesen Vorschlag gibt es nicht mehr."
   }
 }

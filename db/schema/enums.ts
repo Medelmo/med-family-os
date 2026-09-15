@@ -133,3 +133,22 @@ export const caseStatusEnum = pgEnum("case_status", [
   "CANCELLED",
   "ARCHIVED",
 ]);
+
+/**
+ * AI suggestions (ADR-027). `STALE` is not a decision anybody made — it is
+ * what happens when the records a suggestion was about change underneath
+ * it, which is why it sits alongside the two human answers rather than
+ * inside them.
+ */
+export const aiSuggestionStatusEnum = pgEnum("ai_suggestion_status", [
+  "PROPOSED",
+  "ACCEPTED",
+  "REJECTED",
+  "STALE",
+]);
+
+export const aiSuggestionKindEnum = pgEnum("ai_suggestion_kind", [
+  "CASE_NEXT_ACTION",
+  "CASE_TASK",
+  "CASE_SUMMARY",
+]);

@@ -1,0 +1,162 @@
+/*
+ * The assistant's suggestions on a case (ADR-027).
+ *
+ * Styled to read as a *proposal*, not as part of the record. The dashed
+ * edge and the offset accent are doing real work: everything else on this
+ * page is something the household wrote down, and this is something a
+ * machine thinks they might want to. It must never be mistaken for the
+ * former at a glance.
+ */
+
+.ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+  margin-bottom: var(--space-4);
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  margin-bottom: var(--space-3);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-info-surface);
+}
+
+/* The accent rail, in the assistant's own colour. A position as well as a
+   colour, so "this is not yours" survives a monochrome screen. */
+.card::before {
+  content: "";
+  position: absolute;
+  inset-block: var(--space-4);
+  inset-inline-start: -1px;
+  width: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--color-signal);
+  box-shadow: var(--glow-strong);
+}
+
+.badge {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--color-signal);
+}
+
+.suggestion {
+  margin: 0;
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-line);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- provenance ---------- */
+
+.provenance {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.provenance div {
+  min-width: 0;
+}
+
+.provenance dt {
+  font-family: var(--font-display);
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-1);
+}
+
+.provenance dd {
+  margin: 0;
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.provenance code {
+  font-family: var(--font-mono);
+}
+
+/*
+ * Where the model ran.
+ *
+ * The single most important fact on the card, because it is the one that
+ * decides whether anything left the house — so it is a chip in its own
+ * right rather than a word in a sentence, and remote is warned rather
+ * than merely stated.
+ */
+.locality {
+  display: inline-block;
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-pill);
+  border: 1px solid currentColor;
+  font-family: var(--font-display);
+  font-size: var(--text-compact-size);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.locality[data-locality="LOCAL"] {
+  color: var(--color-success);
+}
+
+.locality[data-locality="REMOTE"] {
+  color: var(--color-warning);
+}
+
+.note {
+  margin: 0;
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+  color: var(--color-text-secondary);
+}
+
+/* ---------- decide ---------- */
+
+.decide {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+}
+
+.error {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+  color: var(--color-critical);
+}
+
+/* A shape as well as a colour (WCAG 1.4.1). */
+.error::before {
+  content: "";
+  flex: none;
+  width: 3px;
+  align-self: stretch;
+  background: var(--color-critical);
+  border-radius: var(--radius-pill);
+}

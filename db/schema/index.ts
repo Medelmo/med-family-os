@@ -14,3 +14,4 @@ export * from "./assets";
 export * from "./integrations";
 export * from "./links";
 export * from "./outbox";
+export * from "./ai";
