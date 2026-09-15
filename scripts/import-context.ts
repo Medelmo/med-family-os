@@ -25,9 +25,10 @@
 import { readFileSync } from "node:fs";
 import { and, eq } from "drizzle-orm";
 import { db } from "../infrastructure/db/client";
-import { householdMemberships, inboxItems, people, users, cases } from "../db/schema";
+import { householdMemberships, inboxItems, people, users, cases, deadlines } from "../db/schema";
 import { captureInboxItem } from "../application/commands/inbox/captureInboxItem";
 import { createCase } from "../application/commands/cases/createCase";
+import { createDeadline } from "../application/commands/deadlines/createDeadline";
 import type { Actor } from "../application/policies/authorize";
 
 /* ------------------------------------------------------------------ *
@@ -58,6 +59,22 @@ type Item =
       sensitivity?: "NORMAL" | "SENSITIVE" | "HIGHLY_SENSITIVE";
       /** false leaves it in DRAFT — for a matter that is not live yet. */
       activate?: boolean;
+    }
+  | {
+      kind: "deadline";
+      title: string;
+      description?: string;
+      /** ISO YYYY-MM-DD. A day the household is committed to. */
+      dueOn: string;
+      /*
+       * Links to a case by its *title*, not its id — a reviewable file
+       * cannot contain uuids that do not exist yet. Resolved against the
+       * household's own cases at import time, so it can only ever point at
+       * a case this household owns.
+       */
+      caseTitle?: string;
+      visibility?: "PRIVATE" | "HOUSEHOLD" | "SHARED";
+      sensitivity?: "NORMAL" | "SENSITIVE" | "HIGHLY_SENSITIVE";
     };
 
 function parseItems(path: string): Item[] {
@@ -78,8 +95,14 @@ function parseItems(path: string): Item[] {
     }
 
     const item = parsed as Item;
-    if (item.kind !== "inbox" && item.kind !== "case") {
-      throw new Error(`Line ${index + 1}: kind must be "inbox" or "case", got ${JSON.stringify((item as { kind?: unknown }).kind)}`);
+    if (item.kind !== "inbox" && item.kind !== "case" && item.kind !== "deadline") {
+      throw new Error(`Line ${index + 1}: kind must be "inbox", "case" or "deadline", got ${JSON.stringify((item as { kind?: unknown }).kind)}`);
+    }
+    if (item.kind === "deadline") {
+      if (!item.title?.trim()) throw new Error(`Line ${index + 1}: a deadline needs a title.`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(item.dueOn ?? "")) {
+        throw new Error(`Line ${index + 1}: a deadline needs dueOn as YYYY-MM-DD, got ${JSON.stringify(item.dueOn)}`);
+      }
     }
     if (item.kind === "inbox" && !item.text?.trim()) {
       throw new Error(`Line ${index + 1}: an inbox item needs text.`);
@@ -151,14 +174,23 @@ async function resolveActor(email: string): Promise<{ actor: Actor; userName: st
  * reworded duplicate.
  */
 async function existingContent(householdId: string) {
-  const [inboxRows, caseRows] = await Promise.all([
+  const [inboxRows, caseRows, deadlineRows] = await Promise.all([
     db.select({ text: inboxItems.capturedText }).from(inboxItems).where(eq(inboxItems.householdId, householdId)),
     db.select({ title: cases.title }).from(cases).where(eq(cases.householdId, householdId)),
+    db
+      .select({ title: deadlines.title, dueOn: deadlines.dueOn })
+      .from(deadlines)
+      .where(eq(deadlines.householdId, householdId)),
   ]);
 
   return {
     inbox: new Set(inboxRows.map((row) => row.text.trim())),
     cases: new Set(caseRows.map((row) => row.title.trim())),
+    // Keyed by title *and* date: the same Frist recorded for a different
+    // date is a different commitment, not a duplicate.
+    // Keyed by title *and* date: the same Frist recorded against a
+    // different date is a different commitment, not a duplicate.
+    deadlines: new Set(deadlineRows.map((row) => `${row.title.trim()}|${row.dueOn.toISOString().slice(0, 10)}`)),
   };
 }
 
@@ -188,7 +220,10 @@ async function main() {
     process.exit(2);
   }
 
-  const items = parseItems(file);
+  // Cases first, so a deadline naming one by title can resolve it in the
+  // same run. Order within each kind is preserved.
+  const order = { case: 0, deadline: 1, inbox: 2 } as const;
+  const items = parseItems(file).sort((a, b) => order[a.kind] - order[b.kind]);
   const { actor, userName } = await resolveActor(email);
   const existing = await existingContent(actor.householdId);
 
@@ -202,9 +237,15 @@ async function main() {
 
   for (const [index, item] of items.entries()) {
     const label = item.kind === "inbox" ? item.text.trim() : item.title.trim();
+    const dedupeKey = item.kind === "deadline" ? `${label}|${item.dueOn}` : label;
     const shortLabel = label.length > 70 ? `${label.slice(0, 67)}…` : label;
 
-    const alreadyThere = item.kind === "inbox" ? existing.inbox.has(label) : existing.cases.has(label);
+    const alreadyThere =
+      item.kind === "inbox"
+        ? existing.inbox.has(label)
+        : item.kind === "case"
+          ? existing.cases.has(label)
+          : existing.deadlines.has(dedupeKey);
     if (alreadyThere) {
       console.log(`  skip   [${item.kind}] ${shortLabel}  (already present)`);
       skipped += 1;
@@ -212,7 +253,15 @@ async function main() {
     }
 
     if (!apply) {
-      const tag = item.kind === "case" && item.sensitivity && item.sensitivity !== "NORMAL" ? `  <${item.sensitivity}>` : "";
+      // The dry run is the review surface, so it shows the two things a
+      // reader most needs to check before applying: when a deadline falls,
+      // and whether anything sensitive is about to be written as NORMAL.
+      const tag =
+        item.kind === "deadline"
+          ? `  due ${item.dueOn}`
+          : item.kind === "case" && item.sensitivity && item.sensitivity !== "NORMAL"
+            ? `  <${item.sensitivity}>`
+            : "";
       console.log(`  would  [${item.kind}] ${shortLabel}${tag}`);
       created += 1;
       continue;
@@ -222,6 +271,39 @@ async function main() {
       if (item.kind === "inbox") {
         await captureInboxItem(actor, actor.householdId, { capturedText: item.text });
         existing.inbox.add(label);
+      } else if (item.kind === "deadline") {
+        /*
+         * The case is resolved by title, here, against this household's
+         * own cases — a reviewable file cannot carry uuids that do not
+         * exist until the moment the import runs. Resolving it this way
+         * also means a deadline can only ever attach to a case the
+         * importing account already owns; `createDeadline` re-checks
+         * ownership regardless, because a script is not an authority.
+         *
+         * A named case that is not found is a failure, not a silent
+         * unlinked deadline: a Frist floating free of its matter is how a
+         * date gets missed, and a typo should say so.
+         */
+        let caseId: string | undefined;
+        if (item.caseTitle) {
+          const [linked] = await db
+            .select({ id: cases.id })
+            .from(cases)
+            .where(and(eq(cases.householdId, actor.householdId), eq(cases.title, item.caseTitle)))
+            .limit(1);
+          if (!linked) throw new Error(`No case titled "${item.caseTitle}" in this household.`);
+          caseId = linked.id;
+        }
+
+        await createDeadline(actor, actor.householdId, {
+          title: item.title,
+          description: item.description ?? null,
+          dueOn: item.dueOn,
+          caseId: caseId ?? null,
+          visibility: item.visibility ?? "HOUSEHOLD",
+          sensitivity: item.sensitivity ?? "NORMAL",
+        });
+        existing.deadlines.add(dedupeKey);
       } else {
         await createCase(actor, actor.householdId, {
           title: item.title,
