@@ -154,9 +154,35 @@ Two things are built into their wording on purpose:
 
 > Deploy Med Family OS onto the VM.
 >
-> - Clone the repository, then follow `docs/GETTING-STARTED.md` §3a in it.
->   That file is the source of truth; if anything I have said contradicts
->   it, the file wins and you should tell me.
+> **Repository access.** The repository is private. I will give you a
+> read-only SSH deploy key scoped to this one repository — it can clone and
+> pull, and it cannot push, which has been verified rather than assumed.
+> Install it on the VM as `/root/.ssh/medfamilyos_deploy` (or the deploying
+> user's `~/.ssh`), `chmod 600`, and add a host entry so git uses it
+> automatically:
+>
+> ```
+> Host github-medfamilyos
+>   HostName github.com
+>   User git
+>   IdentityFile ~/.ssh/medfamilyos_deploy
+>   IdentitiesOnly yes
+> ```
+>
+> Then clone with:
+>
+> ```
+> git clone git@github-medfamilyos:Medelmo/med-family-os.git
+> ```
+>
+> Do not put a personal access token on this VM, and do not add this key to
+> an agent that forwards it anywhere. If the key is ever exposed, say so
+> immediately — revoking it is one click and costs nothing, and a key
+> nobody admits to losing is the expensive kind.
+>
+> - Having cloned it, follow `docs/GETTING-STARTED.md` §3a in the
+>   repository. That file is the source of truth; if anything I have said
+>   contradicts it, the file wins and you should tell me.
 > - Generate **fresh** secrets on the VM with `openssl rand -base64 32` —
 >   one per variable, never reused, and never copied from a development
 >   machine.
