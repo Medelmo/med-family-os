@@ -7,7 +7,11 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # Both names deliberately. The repository's default branch is the one
+    # git created it with, and a workflow that lists only the branch
+    # somebody meant to have does not fail — it silently never runs, which
+    # is the worst of the three possible outcomes.
+    branches: [main, master]
   pull_request:
 
 # A second push to the same branch makes the first run irrelevant.
@@ -46,8 +50,35 @@ jobs:
       # Real deployments generate this per CLAUDE.md §12 and .env.example;
       # no real secret is ever committed or needed to run these gates.
       AUTH_SECRET: ci-only-auth-secret-not-used-anywhere-else
-      APP_URL: http://localhost:3000
       NEXT_TELEMETRY_DISABLED: "1"
+
+      # Required, not optional, despite what .env.example says.
+      #
+      # .env.example describes these as needed "only once an integration is
+      # connected". That is true of a household's deployment and false of
+      # this job: 44 unit/integration tests and 11 end-to-end tests
+      # exercise connecting, sealing, opening and rotating integration
+      # credentials, and every one of them fails without a keyring —
+      # `getKeyring()` throws and the connect button never enables.
+      #
+      # This was measured by stripping a local .env down to exactly what
+      # this file sets and running the suite: 44 failed, 776 passed. Adding
+      # this one variable back returned it to 820 passed.
+      #
+      # The value is a throwaway that decodes to the ASCII string
+      # "ci-only-not-a-real-key-012345678", which is what a key must be:
+      # exactly 32 bytes. It is written out rather than stored as a GitHub
+      # secret on purpose — a secret reference would imply something real
+      # is kept here, and an obviously fake constant tells the truth.
+      # A household's real key is generated per .env.example and never
+      # goes near a repository.
+      CREDENTIAL_KEYS: v1:Y2ktb25seS1ub3QtYS1yZWFsLWtleS0wMTIzNDU2Nzg=
+      CREDENTIAL_ACTIVE_KEY: v1
+
+      # HA_READONLY_TOKEN is deliberately absent. Leaving it unset disables
+      # /api/ha/summary rather than opening it, and tests/e2e/ha-journey
+      # asserts that disabled behaviour — so setting one here would remove
+      # the coverage rather than add any.
 
     steps:
       - uses: actions/checkout@v4

@@ -42,14 +42,25 @@ variables:
 openssl rand -base64 32
 ```
 
-For local development you need four entries:
+For local development you need these:
 
 ```dotenv
 POSTGRES_PASSWORD=<generated>
 DATABASE_URL=postgres://medfamily:<the same value>@localhost:5432/medfamily
 AUTH_SECRET=<generated>
-HA_READONLY_TOKEN=<generated, at least 32 characters>
+
+# Needed by anything that touches an integration credential — including
+# 44 unit/integration tests and 11 E2E tests. `.env.example` calls these
+# optional, which is true of a household running no integrations and not
+# true of a working test run.
+CREDENTIAL_KEYS=v1:<openssl rand -base64 32>
+CREDENTIAL_ACTIVE_KEY=v1
 ```
+
+`HA_READONLY_TOKEN` is genuinely optional: leaving it unset disables
+`/api/ha/summary` rather than opening it, and the test suite covers that
+disabled path. Set it only when you want Home Assistant to read the
+summary.
 
 > The password inside `DATABASE_URL` must match `POSTGRES_PASSWORD`
 > exactly. A mismatch shows up as an authentication failure from the
@@ -337,10 +348,6 @@ Scans dependencies and the built image for known advisories.
 
 ## Known rough edges
 
-- **`APP_URL` in `.env.example` is not read by any code.** It appears in
-  the example file and in CI, but nothing consumes it. Set it or don't; it
-  currently has no effect. Auth.js runs with `trustHost: true` and derives
-  the origin from the request.
 - **Migrations are a manual step** (§4). There is no startup migration and
   no `migrate` service in the compose file.
 - **There is no password reset flow.** No mail server is assumed, so
