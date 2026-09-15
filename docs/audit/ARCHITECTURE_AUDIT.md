@@ -2633,3 +2633,107 @@ horizontal-overflow list. Both pages were looked at on a phone.
 - **A restore drill actually run.** The page now supplies the numbers the
   drill compares; the drill itself needs the household's own backup, which
   this repository does not have.
+
+## The Holographic HUD, and an assistant that speaks
+
+A design request, not a defect: "modern, pretty and futuristic", with a
+welcome screen carrying a moving face that greets the household by name,
+aloud, in German. Five complete visual worlds were built as working
+comparisons — each rendering the same two screens with a live animated
+face — and Holographic HUD was chosen. **ADR-026** records the decisions.
+
+### The redesign cost twenty-five stylesheets nothing
+
+Every token *name* that existed still exists; only the values changed.
+That one constraint is why twenty-seven screens inherited an entirely new
+visual world without being edited — nothing in this application reads a
+colour literal, which was ADR-011's whole point and had never been tested
+until something needed replacing.
+
+Dark became primary and the light theme was rebuilt rather than inverted,
+because an inversion would be unreadable: `#5ee7ff` on white is 1.4:1. The
+light theme uses a deep teal of the same hue at 5.3:1, glows become
+shadows, and the grid drops to a fifth of its opacity.
+
+### Four defects, three of them mine and all found by looking
+
+**The typewriter never ran, and the page hung.** A `started` ref guard set
+in the effect body: React runs an effect, tears it down and runs it again
+precisely to surface this, so the ref was set on the first run, the
+cleanup cleared the interval, and the second run returned early. The
+greeting stayed permanently blank *and* auto-continue waited forever for a
+line that would never finish. An effect that sets up and tears down
+cleanly needs no guard.
+
+**A hydration mismatch, then the bug fixing it introduced.** Capability
+detection ran as `typeof window !== "undefined"`, so the server rendered
+"no speech engine" and the browser's first render disagreed. Fixed with
+the project's existing `useHydrated` — which then made the greeting fire
+on the first render, while `supported` was still false, and report "this
+device has no voice for your language" on a machine that had one. The
+symptom looked like a missing voice; the cause was asking before the
+answer existed.
+
+**An empty voice list treated as "no voice".** `getVoices()` is empty on a
+cold load in every browser — the list arrives asynchronously. The first
+version read that as a device with no German, which would have failed
+silently on exactly the load that matters, for everyone. An empty list is
+now a "not yet", with a retry on `voiceschanged` and a bounded wait.
+Caught by testing on a browser that *did* have voices and still got the
+fallback.
+
+**A real accessibility regression.** Larger type made the CSV import
+preview overflow where it previously fitted, and a scrollable region with
+no `tabindex` is a column a keyboard user can never reach — axe caught it
+as `scrollable-region-focusable`. Both scroll containers in the app now
+take focus and an accessible name.
+
+And one caught on a phone: uppercase display type at 0.16em tracking
+pushed "MED FAMILY OS" and "SIGN OUT" onto two lines each at 375px,
+doubling the height of the top bar. Tracking is the thing that gives below
+the breakpoint.
+
+### The voice, and what it refuses to do
+
+The browser's own speech engine, not audio files: no third party to call,
+works with the house's internet down, and it can say a person's actual
+name — which a recording cannot, and which is the entire point. Sending a
+household member's name to a cloud TTS service to be pronounced is the
+exact shape of thing this application exists not to do.
+
+Browsers refuse to speak before a page has been interacted with. That is
+not a bug to defeat — it is what stops every tab on the internet talking
+at you — so the welcome moment sits immediately after the login form,
+where signing in *is* the interaction. Where it is still refused the state
+is `blocked` and one button fixes it, rather than silence somebody has to
+diagnose.
+
+### ADR-008's missing half, built
+
+ADR-008 chose a per-user locale in a cookie and noted "Phase 1 has no
+Settings UI yet to write it". The consequence, unnoticed for eight phases:
+the German half of a bilingual application was unreachable from inside it.
+There is now a language page — open to every role, because what language
+you read in is not an administrative decision about the household — and an
+unset cookie negotiates from `Accept-Language`, so a German browser gets a
+German application without being asked.
+
+### Verified
+
+`tsc --noEmit`, `eslint .`, 711 unit and integration tests, `next build`,
+and 232 E2E tests across desktop and mobile — the 215 that existed before,
+unchanged and passing against the new palette, plus 17 new ones for the
+welcome moment and the language switch. Every axe check passes, including
+two new ones on the welcome screen and the language page. Both were looked
+at on a phone, and the voice was confirmed actually firing
+(`speechSynthesis.speaking === true`) rather than assumed.
+
+### Not done
+
+- **The assistant says nothing but hello.** It is a greeting and a status
+  light, deliberately: giving it opinions about a household's records
+  before Phase 8's provenance foundations exist would be the one thing
+  CLAUDE.md §11 forbids.
+- **German voice quality depends on the machine.** The app asks for the
+  best local `de-*` voice it can find; how good that is belongs to the
+  operating system, not to this application.

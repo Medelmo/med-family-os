@@ -1,46 +1,127 @@
 /*
- * The shell from docs/design/implementation-handoff.md: sidebar 248px and
- * a 64px top bar on the desktop; on a phone a 56px top bar and a 64px
- * bottom nav.
+ * The shell (ADR-026), on the geometry from
+ * docs/design/implementation-handoff.md: sidebar 248px and a 64px top bar
+ * on the desktop; on a phone a 56px top bar and a 64px bottom nav.
  *
  * Mobile-first: the phone layout is the default and the sidebar appears at
  * the breakpoint, so a narrow viewport can never inherit a desktop rule it
  * cannot fit.
+ *
+ * The redesign changes the material, not the geometry. Bars became
+ * translucent so the ground's grid runs continuously beneath the whole
+ * interface, and every edge became a rim light instead of a grey border.
  */
 
 .shell {
   min-height: 100vh;
-  background: var(--color-bg);
   display: flex;
   flex-direction: column;
+  /* Deliberately no background: the body's grid and bloom *are* the
+     shell's background, and painting over them here would flatten the
+     whole world into one opaque rectangle. */
 }
 
 .topBar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
   min-height: 56px;
   padding: var(--space-2) var(--space-4);
-  background: var(--color-surface);
+  background: linear-gradient(180deg, var(--color-surface-raised), var(--color-surface));
+  backdrop-filter: blur(var(--blur-panel));
+  -webkit-backdrop-filter: blur(var(--blur-panel));
   border-bottom: 1px solid var(--color-border);
 }
 
+/* The lit edge under the bar, brightest in the middle. */
+.topBar::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-border-strong) 30%, var(--color-border-strong) 70%, transparent);
+  pointer-events: none;
+}
+
+/*
+ * The app name.
+ *
+ * Tracking is the thing that has to give on a phone: the display face set
+ * uppercase at 0.16em pushed "MED FAMILY OS" onto two lines at 375px and
+ * took the whole bar with it. Below the breakpoint it drops to a tighter
+ * setting and never wraps; the desktop keeps the full HUD spacing.
+ */
 .appName {
-  font-size: var(--text-h3-size);
-  line-height: var(--text-h3-line);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-body-size);
+  line-height: 1.2;
   font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--color-text-primary);
+}
+
+/*
+ * The system mark: a small live core. It is the only thing in the chrome
+ * that moves on its own, and it earns that by meaning something — it is
+ * the same core that sits in the assistant's chest on the welcome screen,
+ * so "the system is up" has one symbol across the app.
+ */
+.mark {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-signal);
+  box-shadow: var(--glow-strong);
+  animation: markPulse 3.6s var(--ease-in-out) infinite;
+}
+
+@keyframes markPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.88);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .userArea {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  min-width: 0;
+}
+
+/* Never two lines: a wrapped button is a taller bar on every screen. */
+.userArea button {
+  white-space: nowrap;
 }
 
 .userName {
+  font-family: var(--font-mono);
   font-size: var(--text-compact-size);
+  letter-spacing: 0.04em;
   color: var(--color-text-secondary);
+  /* A long name truncates rather than pushing Sign out off the edge. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 14ch;
 }
 
 .body {
@@ -52,12 +133,13 @@
 .content {
   flex: 1;
   min-width: 0;
-  padding: var(--space-4);
+  padding: var(--space-5) var(--space-4);
   /* Room for the fixed bottom bar, so the last card is never trapped
      underneath it. */
-  padding-bottom: calc(64px + var(--space-6));
+  padding-bottom: calc(64px + var(--space-8));
   max-width: 1440px;
   margin: 0 auto;
+  width: 100%;
 }
 
 /* --- Sidebar: desktop only --- */
@@ -69,28 +151,35 @@
 .sidebarList {
   list-style: none;
   margin: 0;
-  padding: var(--space-4) var(--space-2);
+  padding: var(--space-5) var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 2px;
 }
 
 .sidebarLink {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
   color: var(--color-text-secondary);
   text-decoration: none;
+  font-family: var(--font-display);
+  font-size: var(--text-body-size);
   font-weight: 600;
+  letter-spacing: 0.04em;
   min-height: 44px;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
 }
 
 .sidebarLink:hover,
 .sidebarLink:focus-visible {
   color: var(--color-text-primary);
-  background: var(--color-bg);
+  background: var(--color-info-surface);
 }
 
 /* Current page is marked by the attribute, not by a separate class, so
@@ -100,14 +189,32 @@
   background: var(--color-info-surface);
 }
 
+/*
+ * The active rail. A lit bar on the leading edge — position as well as
+ * colour, so the current page is not signalled by hue alone (WCAG 1.4.1)
+ * and survives a monochrome screen.
+ */
+.sidebarLink[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  inset-block: 8px;
+  inset-inline-start: -3px;
+  width: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--color-signal);
+  box-shadow: var(--glow-strong);
+}
+
 /* --- Bottom nav: phone only --- */
 
 .bottomNav {
   position: fixed;
   inset-inline: 0;
   bottom: 0;
-  background: var(--color-surface);
-  border-top: 1px solid var(--color-border);
+  background: linear-gradient(0deg, var(--color-surface-raised), var(--color-surface));
+  backdrop-filter: blur(var(--blur-panel));
+  -webkit-backdrop-filter: blur(var(--blur-panel));
+  border-top: 1px solid var(--color-border-strong);
   /* Clear of the home indicator on phones that have one. */
   padding-bottom: env(safe-area-inset-bottom, 0);
   z-index: 10;
@@ -126,6 +233,7 @@
 }
 
 .bottomLink {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -134,9 +242,11 @@
   padding: var(--space-2) var(--space-1);
   color: var(--color-text-secondary);
   text-decoration: none;
+  font-family: var(--font-display);
   font-size: var(--text-compact-size);
   line-height: var(--text-compact-line);
   font-weight: 600;
+  letter-spacing: 0.02em;
   text-align: center;
   /* Five labels across a 375px phone: let long words break rather than
      push the bar wider than the screen. */
@@ -148,16 +258,31 @@
   background: var(--color-info-surface);
 }
 
+/* The rail again, along the top edge this time — same meaning, same
+   reason it is a position and not only a colour. */
+.bottomLink[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  inset-inline: 22%;
+  top: 0;
+  height: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--color-signal);
+  box-shadow: var(--glow-strong);
+}
+
 .badge {
   display: inline-block;
   min-width: 20px;
   padding: 0 var(--space-1);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   background: var(--color-info);
   color: var(--color-text-on-accent);
+  font-family: var(--font-mono);
   font-size: var(--text-compact-size);
   line-height: 20px;
   text-align: center;
+  box-shadow: var(--glow-strong);
 }
 
 @media (min-width: 768px) {
@@ -166,12 +291,35 @@
     padding: var(--space-3) var(--space-6);
   }
 
+  .appName {
+    font-size: var(--text-h3-size);
+    line-height: var(--text-h3-line);
+    letter-spacing: var(--track-label);
+    gap: var(--space-3);
+  }
+
+  .userName {
+    max-width: 28ch;
+  }
+
   .sidebarNav {
     display: block;
     width: 248px;
     flex-shrink: 0;
     border-inline-end: 1px solid var(--color-border);
     background: var(--color-surface);
+    backdrop-filter: blur(var(--blur-panel));
+    -webkit-backdrop-filter: blur(var(--blur-panel));
+    /* Fourteen destinations is taller than a laptop viewport, and the
+       last one was being cut off below the fold with no way to reach it
+       while the page itself had nothing to scroll. Sticky under the top
+       bar, and scrollable in its own right. */
+    position: sticky;
+    top: 64px;
+    align-self: flex-start;
+    max-height: calc(100vh - 64px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .bottomNav {
@@ -179,7 +327,17 @@
   }
 
   .content {
-    padding: var(--space-6);
-    padding-bottom: var(--space-6);
+    padding: var(--space-8) var(--space-6);
+    padding-bottom: var(--space-8);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .topBar,
+  .sidebarNav,
+  .bottomNav {
+    background: var(--color-surface-solid);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }

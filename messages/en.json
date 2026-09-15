@@ -609,7 +609,14 @@
     "export": "Take your data out",
     "exportHint": "One file with everything you can see.",
     "backup": "Backup and restore",
-    "backupHint": "What to back up, and numbers to verify a restore against."
+    "backupHint": "What to back up, and numbers to verify a restore against.",
+    "language": "Language",
+    "languageHint": "Which language this app speaks — on screen and out loud.",
+    "languageLabel": "Language",
+    "languageSave": "Save language",
+    "languageEn": "English",
+    "languageDe": "Deutsch",
+    "languageSaved": "Language changed."
   },
   "links": {
     "related": "Related",
@@ -723,5 +730,17 @@
     "drill5": "Compare these counts, and open a few records you recognise.",
     "drill6": "Write down how long it took and whether it worked.",
     "exportLink": "Take an export now"
+  },
+  "welcome": {
+    "greeting": "Welcome {name}",
+    "summaryAttention": "{count, plural, one {One thing needs your attention today.} other {# things need your attention today.}}",
+    "summaryClear": "Nothing needs your attention today.",
+    "continue": "Continue",
+    "voiceOn": "Voice on",
+    "voiceOff": "Voice off",
+    "playGreeting": "Play greeting",
+    "androidLabel": "The household assistant, waking to greet you",
+    "blockedNote": "Your browser only allows sound after you interact with the page. Press Play greeting to hear it.",
+    "unavailableNote": "This device has no voice for your language, so the greeting is shown rather than spoken."
   }
 }

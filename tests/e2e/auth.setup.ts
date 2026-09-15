@@ -28,7 +28,15 @@ setup("bootstrap the household and save the owner session", async ({ page }) => 
   await page.getByRole("button", { name: "Create household" }).click();
 
   // Bootstrap signs the new owner straight in rather than bouncing them
-  // to /login with the credentials they just typed.
+  // to /login with the credentials they just typed — and lands on the
+  // welcome moment, which is the household's first sight of the app it
+  // just created (ADR-026). This is the suite's one real sign-in, so it
+  // is also the only honest place to assert where signing in goes.
+  await expect(page).toHaveURL(/\/welcome$/);
+  await expect(page.getByRole("img", { name: /assistant/i })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText(`Welcome ${OWNER.name.split(" ")[0]}`);
+
+  // And the moment ends by itself, leaving them in the application.
   await expect(page.getByText(`Hello, ${OWNER.name}`)).toBeVisible();
 
   // A second account for the sign-out spec (see helpers.ts).

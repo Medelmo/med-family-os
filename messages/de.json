@@ -609,7 +609,14 @@
     "export": "Daten mitnehmen",
     "exportHint": "Eine Datei mit allem, was du sehen kannst.",
     "backup": "Sicherung und Wiederherstellung",
-    "backupHint": "Was zu sichern ist und woran sich eine Wiederherstellung prüfen lässt."
+    "backupHint": "Was zu sichern ist und woran sich eine Wiederherstellung prüfen lässt.",
+    "language": "Sprache",
+    "languageHint": "In welcher Sprache diese App spricht — auf dem Bildschirm und laut.",
+    "languageLabel": "Sprache",
+    "languageSave": "Sprache speichern",
+    "languageEn": "English",
+    "languageDe": "Deutsch",
+    "languageSaved": "Sprache geändert."
   },
   "links": {
     "related": "Zusammenhänge",
@@ -723,5 +730,17 @@
     "drill5": "Diese Zahlen vergleichen und ein paar bekannte Datensätze öffnen.",
     "drill6": "Festhalten, wie lange es gedauert hat und ob es funktioniert hat.",
     "exportLink": "Jetzt einen Export erstellen"
+  },
+  "welcome": {
+    "greeting": "Willkommen {name}",
+    "summaryAttention": "{count, plural, one {Eine Sache braucht heute deine Aufmerksamkeit.} other {# Dinge brauchen heute deine Aufmerksamkeit.}}",
+    "summaryClear": "Heute braucht nichts deine Aufmerksamkeit.",
+    "continue": "Weiter",
+    "voiceOn": "Ton an",
+    "voiceOff": "Ton aus",
+    "playGreeting": "Begrüßung abspielen",
+    "androidLabel": "Der Haushaltsassistent erwacht und begrüßt dich",
+    "blockedNote": "Dein Browser lässt Ton erst nach einer Interaktion zu. Tippe auf „Begrüßung abspielen“, um sie zu hören.",
+    "unavailableNote": "Auf diesem Gerät gibt es keine Stimme für deine Sprache — die Begrüßung wird angezeigt statt gesprochen."
   }
 }

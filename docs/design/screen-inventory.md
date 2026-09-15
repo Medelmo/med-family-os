@@ -1,13 +1,18 @@
 # Screen Inventory
 
 ## Global
+0. Welcome — `/welcome`. Built. The one full-bleed screen: the household
+   assistant wakes, blinks, and greets the signed-in person by name, aloud,
+   in the language the app is set to (ADR-026). Reached only by signing in;
+   continues to Today on its own and can be left with any key or tap.
 1. Login
 2. Unlock/re-authentication
 3. App shell
 4. Global search
 5. Command palette
 6. Notifications
-7. Settings
+7. Settings — including `/settings/language`, which finally gives ADR-008's
+   per-user locale something to write it (ADR-026).
 8. Household members / permissions
 9. Audit/security activity
 

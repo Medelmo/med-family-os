@@ -12,27 +12,104 @@ body {
   padding: 0;
 }
 
+/*
+ * The ground the whole application floats on (ADR-026).
+ *
+ * Three layers, all painted here once rather than per page: a fine
+ * engineering grid, a soft signal bloom from the top edge, and the
+ * near-black itself. `background-attachment: fixed` keeps the grid still
+ * while content scrolls over it, which is what makes it read as a surface
+ * the interface sits on rather than as texture printed on the page.
+ */
 body {
-  background: var(--color-bg);
+  background-color: var(--color-bg);
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+    radial-gradient(ellipse 80% 55% at 50% -10%, var(--color-info-surface), transparent 72%);
+  background-size: var(--grid-size) var(--grid-size), var(--grid-size) var(--grid-size), 100% 100%;
+  background-attachment: fixed;
   color: var(--color-text-primary);
   font-family: var(--font-sans);
   font-size: var(--text-body-size);
   line-height: var(--text-body-line);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  min-height: 100vh;
+}
+
+/*
+ * The scanline. A separate fixed layer rather than a body background so
+ * it cannot be scrolled, and `pointer-events: none` so it is never in the
+ * way of a click. It is deliberately at the edge of perception — 2.2%
+ * white on a 3px pitch — because a scanline you can actually see is a
+ * scanline you will be annoyed by within a week.
+ */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, var(--scan-line) 0 1px, transparent 1px 3px);
 }
 
 /* CLAUDE.md §13: "clear focus states" / §22 "no color-only meaning". A
-   visible ring on every focusable element, not just form inputs. */
+   visible ring on every focusable element, not just form inputs — and on
+   this ground it also gets a glow, so it survives being over a panel. */
 :focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 img {
   max-width: 100%;
 }
 
-/* CLAUDE.md §23 "avoid distracting motion" / WCAG 2.2 AA reduced motion. */
+/* Headings take the instrument face. Body copy deliberately does not —
+   see the typography note in tokens.css. */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: var(--track-tight);
+}
+
+/* Anything that lines up in a column reads in the mono face. */
+table,
+code,
+kbd,
+samp {
+  font-family: var(--font-mono);
+}
+
+a {
+  color: var(--color-info);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* Numbers that sit above one another must line up. */
+td,
+th,
+output,
+time {
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * CLAUDE.md §23 "avoid distracting motion" / WCAG 2.2 AA.
+ *
+ * Note what this does *not* do: it does not hide the atmosphere or the
+ * assistant. Someone who asks for less motion is asking for things to
+ * stop moving, not for the interface to lose half its meaning — so the
+ * grid, the glow and the android all stay, perfectly still.
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

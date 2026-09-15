@@ -313,7 +313,20 @@ export function ImportExpensesForm({ month }: { month: string }) {
           </h3>
           <p className={styles.hint}>{t("importCounts", { importable: plan.importable, rejected: plan.rejected })}</p>
 
-          <div className={styles.tableScroll}>
+          {/*
+            A region that scrolls must be reachable by keyboard, or a
+            keyboard user can see a column they can never scroll to
+            (axe: scrollable-region-focusable / WCAG 2.1.1). It therefore
+            takes focus and an accessible name, which is the table's own
+            caption — the heading above it is the section's, not the
+            scroller's.
+          */}
+          <div
+            className={styles.tableScroll}
+            tabIndex={0}
+            role="group"
+            aria-label={t("importPreviewCaption")}
+          >
             <table className={styles.table}>
               <caption className={styles.tableCaption}>{t("importPreviewCaption")}</caption>
               <thead>

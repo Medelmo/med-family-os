@@ -1,6 +1,46 @@
+/*
+ * The panel every screen is built from (ADR-026).
+ *
+ * A HUD panel is not a card sitting on a page — it is a pane of lit glass
+ * over the grid. Three things make that read, and all three are cheap:
+ * the fill is translucent so the grid shows through, the edge carries a
+ * 1px rim light instead of a grey border, and a single hairline runs
+ * along the top where the light would catch.
+ */
 .card {
+  position: relative;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
+  backdrop-filter: blur(var(--blur-panel));
+  -webkit-backdrop-filter: blur(var(--blur-panel));
+  box-shadow: var(--glow-rim);
+  /* The panel is above the page's grid but below the scanline. */
+  isolation: isolate;
+}
+
+/*
+ * The catch-light along the top edge. Drawn with a gradient rather than a
+ * border so it fades out at the corners, which is what stops it looking
+ * like a second border.
+ */
+.card::before {
+  content: "";
+  position: absolute;
+  inset-inline: 12%;
+  top: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-border-strong), transparent);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  /* Some people find translucency over texture genuinely hard to read.
+     The panel becomes solid and keeps every other property. */
+  .card {
+    background: var(--color-surface-solid);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 }

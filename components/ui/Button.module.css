@@ -1,33 +1,78 @@
+/*
+ * Buttons (ADR-026).
+ *
+ * Squared-off and tracked, in the instrument face — a HUD control reads
+ * as machined rather than moulded. The primary action is the only thing
+ * in the interface allowed to be a solid block of signal colour, which is
+ * what makes it findable on a screen full of luminous hairlines.
+ */
 .button {
-  font-family: var(--font-sans);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-display);
   font-size: var(--text-body-size);
-  line-height: var(--text-body-line);
+  line-height: 1;
   font-weight: 600;
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-sm);
   border: 1px solid transparent;
   cursor: pointer;
   /* CLAUDE.md §13/§22: minimum accessible touch target. */
   min-height: 44px;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .button:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.45;
+  /* Also drops the glow: a disabled control that still emits light reads
+     as available, which is the one thing it must not do. */
+  box-shadow: none;
 }
 
 .primary {
   background: var(--color-info);
   color: var(--color-text-on-accent);
+  box-shadow: var(--glow-strong);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--color-text-primary);
 }
 
 .secondary {
-  background: var(--color-surface);
+  background: transparent;
   color: var(--color-text-primary);
   border-color: var(--color-border-strong);
 }
 
+.secondary:hover:not(:disabled) {
+  border-color: var(--color-info);
+  color: var(--color-info);
+  box-shadow: var(--glow-rim);
+}
+
 .danger {
+  background: transparent;
+  color: var(--color-critical);
+  border-color: var(--color-critical);
+}
+
+.danger:hover:not(:disabled) {
   background: var(--color-critical);
   color: var(--color-text-on-accent);
 }

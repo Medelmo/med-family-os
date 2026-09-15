@@ -1,14 +1,25 @@
+/*
+ * Fields, shared by TextField and SelectField (ADR-026).
+ *
+ * An input on a HUD is a slot cut into the panel, not a raised box: the
+ * fill is darker than the surface it sits on, the edge is a hairline, and
+ * focus lights the whole rim rather than drawing a second outline inside
+ * the first.
+ */
 .field {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
   margin-bottom: var(--space-4);
 }
 
 .label {
+  font-family: var(--font-display);
   font-size: var(--text-compact-size);
   line-height: var(--text-compact-line);
   font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
   color: var(--color-text-secondary);
 }
 
@@ -17,11 +28,14 @@
   font-size: var(--text-body-size);
   line-height: var(--text-body-line);
   color: var(--color-text-primary);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-deep);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   padding: var(--space-3);
   min-height: 44px;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
   /* A <select> sizes itself to its widest option, so a long one pushes the
      field — and the page — wider than the screen. A text input never does
      this, which is why it went unnoticed until a picker held a record's
@@ -30,6 +44,28 @@
      `min-width: 0` also lets the field shrink inside a flex column. */
   min-width: 0;
   max-width: 100%;
+}
+
+.input::placeholder {
+  color: var(--color-text-secondary);
+  opacity: 0.65;
+}
+
+.input:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+}
+
+.input:focus-visible {
+  border-color: var(--color-info);
+  box-shadow: var(--glow-strong);
+  /* The rim glow above *is* the focus indicator, and it is joined by the
+     global 2px ring from globals.css — belt and braces, because this is
+     the control a keyboard user is most often looking for. */
+}
+
+.input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .input[aria-invalid="true"] {
@@ -45,7 +81,21 @@
 
 .error {
   margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
   font-size: var(--text-compact-size);
   line-height: var(--text-compact-line);
   color: var(--color-critical);
+}
+
+/* A shape as well as a colour, so the error is not signalled by hue
+   alone (WCAG 1.4.1). */
+.error::before {
+  content: "";
+  flex: none;
+  width: 3px;
+  align-self: stretch;
+  background: var(--color-critical);
+  border-radius: var(--radius-pill);
 }

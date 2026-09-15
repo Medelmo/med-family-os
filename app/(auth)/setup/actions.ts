@@ -32,5 +32,7 @@ export async function submitSetup(_prevState: SetupFormState, formData: FormData
   // Sign the new owner in immediately rather than bouncing them to /login
   // right after they just typed the same credentials.
   await signIn("credentials", { email: ownerEmail, password: ownerPassword, redirect: false });
-  redirect("/");
+  // Straight into the welcome moment: the household's very first sight
+  // of the application it just created (ADR-026).
+  redirect("/welcome");
 }

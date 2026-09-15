@@ -1,3 +1,13 @@
+> **Superseded in appearance by ADR-026 (the Holographic HUD).**
+>
+> The scales, roles and rules below still hold — spacing, radius,
+> typography steps, the five semantic colour roles, and the requirement
+> that components reference tokens rather than literals. What changed is
+> every *value*, plus three additions the HUD needs: a signal colour, a
+> glow set, and named motion durations. `app/tokens.css` is the source of
+> truth for values; ADR-026 is the source of truth for why they are what
+> they are.
+
 # Design System
 
 ## Design goal

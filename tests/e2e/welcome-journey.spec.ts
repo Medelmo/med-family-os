@@ -1,0 +1,122 @@
+import { expect, test, type Page } from "@playwright/test";
+import { OWNER } from "./helpers";
+
+/**
+ * The welcome moment and the language it speaks (ADR-026, ADR-008).
+ *
+ * The voice itself cannot be asserted here — a CI runner has no speech
+ * engine and no speakers, and a test that required one would fail for a
+ * reason that has nothing to do with this application. What *is* asserted
+ * is everything around it: that the greeting says the right person's name
+ * in the right language, that the moment ends by itself, that it can be
+ * left early, and that a device with no voice still shows the words rather
+ * than failing silently.
+ */
+
+async function setLanguage(page: Page, value: "en" | "de", saveLabel: string) {
+  await page.goto("/settings/language");
+  await page.getByLabel(/Language|Sprache/).selectOption(value);
+  await page.getByRole("button", { name: saveLabel }).click();
+  await expect(page.getByRole("status")).toBeVisible();
+}
+
+test.describe("the welcome moment", () => {
+  test.afterEach(async ({ page }) => {
+    // The locale is a cookie, so a test that changes it would change every
+    // test after it. Put back.
+    await page.goto("/settings/language");
+    const select = page.getByLabel(/Language|Sprache/);
+    if ((await select.inputValue()) !== "en") {
+      await select.selectOption("en");
+      await page.getByRole("button", { name: /Save language|Sprache speichern/ }).click();
+      await expect(page.getByRole("status")).toBeVisible();
+    }
+  });
+
+  test("greets the signed-in person by their first name", async ({ page }) => {
+    await page.goto("/welcome");
+
+    // First name only: a greeting, not a summons.
+    const first = OWNER.name.split(" ")[0];
+    await expect(page.getByRole("status")).toContainText(`Welcome ${first}`);
+    await expect(page.getByRole("status")).not.toContainText(OWNER.name);
+
+    // The android is present and described, not left as decoration.
+    await expect(page.getByRole("img", { name: /assistant/i })).toBeVisible();
+  });
+
+  test("says Willkommen in German", async ({ page }) => {
+    await setLanguage(page, "de", "Save language");
+
+    await page.goto("/welcome");
+    await expect(page.getByRole("status")).toContainText(`Willkommen ${OWNER.name.split(" ")[0]}`);
+    await expect(page.getByRole("button", { name: "Weiter" })).toBeVisible();
+  });
+
+  test("continues to Today on its own", async ({ page }) => {
+    await page.goto("/welcome");
+    // No click: the moment ends by itself.
+    await expect(page).toHaveURL(/\/today$/, { timeout: 15000 });
+  });
+
+  test("can be left immediately", async ({ page }) => {
+    await page.goto("/welcome");
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page).toHaveURL(/\/today$/);
+  });
+
+  test("can be left with the keyboard", async ({ page }) => {
+    await page.goto("/welcome");
+    await page.keyboard.press("Escape");
+    await expect(page).toHaveURL(/\/today$/);
+  });
+
+  // A runner has no speech engine, so this is the path every CI run takes —
+  // which makes it the one most worth asserting: the words must still be
+  // there, and the screen must still move on.
+  test("shows the greeting even where there is no voice to speak it", async ({ page }) => {
+    await page.goto("/welcome");
+
+    const greeting = page.getByRole("status");
+    await expect(greeting).toContainText("Welcome");
+    // Whatever the voice does, the summary is present and the moment ends.
+    await expect(greeting).toContainText(/attention|Nothing/i);
+    await expect(page).toHaveURL(/\/today$/, { timeout: 15000 });
+  });
+
+  /*
+   * "Signing in lands here" is asserted in auth.setup.ts instead.
+   *
+   * Not an omission — a deliberate one. Sign-in is rate limited to five
+   * attempts per fifteen minutes per email (ADR-009), and auth.setup.ts
+   * already says in its own docstring that a suite authenticating per test
+   * tripped that limiter. A second real sign-in on the shared owner account
+   * is exactly that mistake, and it fails in a way that looks like a broken
+   * redirect rather than a spent budget. The setup project performs one
+   * genuine sign-in; the assertion belongs there.
+   */
+});
+
+test.describe("language", () => {
+  test("switching to German changes the whole interface", async ({ page }) => {
+    await setLanguage(page, "de", "Save language");
+
+    await page.goto("/today");
+    await expect(page.getByRole("heading", { name: "Heute", level: 1 })).toBeVisible();
+
+    // And back, so the rest of the suite is unaffected.
+    await page.goto("/settings/language");
+    await page.getByLabel("Sprache").selectOption("en");
+    await page.getByRole("button", { name: "Sprache speichern" }).click();
+    await expect(page.getByRole("status")).toBeVisible();
+
+    await page.goto("/today");
+    await expect(page.getByRole("heading", { name: "Today", level: 1 })).toBeVisible();
+  });
+
+  test("is reachable by everyone from Settings", async ({ page }) => {
+    await page.goto("/settings");
+    await page.getByRole("link", { name: "Language" }).click();
+    await expect(page.getByRole("heading", { name: "Language", level: 1 })).toBeVisible();
+  });
+});

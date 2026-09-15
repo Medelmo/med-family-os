@@ -1,19 +1,28 @@
 /*
- * Design tokens from docs/design/design-system.md, implemented per
- * ADR-011. This file is the single source of truth for token *values*;
- * components reference these custom properties, never a raw hex/px value.
+ * Design tokens — the "Holographic HUD" world (ADR-026).
  *
- * docs/design/design-system.md names spacing/radius/typography scales and
- * five semantic color roles but does not specify exact hex values — those
- * are chosen here to satisfy the design system's own stated qualities
- * (calm, restrained, no gradients, strong focus states) and WCAG 2.2 AA
- * contrast (CLAUDE.md §13), and can be refined against a real Figma file
- * later (docs/design/figma-artifacts.md) without changing this file's
- * shape, only its values.
+ * This file is the single source of truth for token *values*; components
+ * reference these custom properties and never a raw hex or px value
+ * (ADR-011). Every token name that existed before the redesign still
+ * exists, which is the whole reason twenty-five stylesheets inherited a
+ * new visual world without being touched: the names are the contract, the
+ * values are the design.
+ *
+ * **Dark is the primary theme now.** The bare `:root` block below carries
+ * the dark palette, and the light theme is rebuilt from it rather than
+ * being the default it was inverted from. That is the honest way round
+ * for a world built on emitted light: "luminous on paper" is the
+ * translation, not the origin.
+ *
+ * Contrast is held at WCAG 2.2 AA in both themes (CLAUDE.md §13). The
+ * cyan signal is bright enough to carry on near-black and would fail
+ * badly on white, so the light theme does not reuse it — it uses a deep
+ * teal of the same hue family, which is why the two palettes are written
+ * out in full rather than one being derived from the other at runtime.
  */
 
 :root {
-  /* Spacing */
+  /* ---------- Spacing ---------- */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -24,94 +33,177 @@
   --space-10: 40px;
   --space-12: 48px;
 
-  /* Radius */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
+  /* ---------- Radius ----------
+     Tighter than before. A HUD is machined, not moulded: 4px reads as a
+     cut edge where 10px read as a soft card. */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-pill: 999px;
 
-  /* Typography */
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --text-display-size: 28px;
-  --text-display-line: 34px;
-  --text-h1-size: 24px;
-  --text-h1-line: 30px;
+  /* ---------- Typography ----------
+     Three roles. Chakra Petch is the instrument face — squared terminals,
+     narrow, and legible at the wide tracking a HUD label needs. Plex Sans
+     carries every sentence a person actually reads, because a technical
+     display face set at 14px in a paragraph about a child's care is
+     showing off at the reader's expense. Plex Mono is for anything that
+     lines up in a column.
+
+     The three --font-* variables are filled in by next/font in
+     app/layout.tsx; the fallbacks here are what renders if that ever
+     fails, and they are deliberately real stacks rather than `sans-serif`. */
+  --font-display: var(--font-chakra), "Chakra Petch", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-plex-sans), "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --text-display-size: 34px;
+  --text-display-line: 38px;
+  --text-h1-size: 26px;
+  --text-h1-line: 32px;
   --text-h2-size: 20px;
   --text-h2-line: 26px;
   --text-h3-size: 16px;
   --text-h3-line: 22px;
   --text-body-size: 14px;
-  --text-body-line: 20px;
+  --text-body-line: 21px;
   --text-compact-size: 12px;
   --text-compact-line: 16px;
 
-  /* Semantic colors — light theme (default) */
+  /** Wide tracking for the uppercase labels the HUD uses as signposts. */
+  --track-label: 0.16em;
+  --track-tight: -0.01em;
+
+  /* ---------- Motion ----------
+     Named so a component never invents its own timing, and so the
+     reduced-motion block in globals.css has one place to neutralise. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 140ms;
+  --dur-base: 240ms;
+  --dur-slow: 520ms;
+
+  /* ---------- Semantic colour — dark (primary) ---------- */
+  --color-critical: #ff7a88;
+  --color-critical-surface: rgba(255, 122, 136, 0.12);
+  --color-warning: #ffb35c;
+  --color-warning-surface: rgba(255, 179, 92, 0.12);
+  --color-success: #59e6a8;
+  --color-success-surface: rgba(89, 230, 168, 0.12);
+  --color-info: #5ee7ff;
+  --color-info-surface: rgba(94, 231, 255, 0.12);
+
+  /* ---------- Surfaces ---------- */
+  --color-bg: #04070c;
+  --color-bg-deep: #020407;
+  --color-surface: rgba(13, 26, 38, 0.66);
+  --color-surface-raised: rgba(19, 35, 50, 0.82);
+  --color-surface-solid: #0b1622;
+  --color-border: rgba(94, 231, 255, 0.14);
+  --color-border-strong: rgba(94, 231, 255, 0.34);
+
+  --color-text-primary: #dceff7;
+  --color-text-secondary: #8ba8ba;
+  --color-text-on-accent: #04070c;
+  --color-focus-ring: #5ee7ff;
+
+  /* ---------- HUD-specific ---------- */
+  --color-signal: #5ee7ff;
+  --color-signal-2: #7c8bff;
+  /** The rim light every panel edge carries. */
+  --glow-rim: 0 0 0 1px rgba(94, 231, 255, 0.10), 0 0 24px -6px rgba(94, 231, 255, 0.28);
+  --glow-strong: 0 0 28px -4px rgba(94, 231, 255, 0.55);
+  --glow-text: 0 0 18px rgba(94, 231, 255, 0.45);
+  --blur-panel: 14px;
+  /** The grid and scanline the whole app floats on — see globals.css. */
+  --grid-line: rgba(94, 231, 255, 0.045);
+  --grid-size: 46px;
+  --scan-line: rgba(255, 255, 255, 0.022);
+
+  color-scheme: dark;
+}
+
+/*
+ * Light — the same geometry, lit from outside instead of within.
+ *
+ * Not an inversion. The cyan signal becomes a deep teal because #5ee7ff
+ * on white is 1.4:1 and unreadable; the glows become soft shadows,
+ * because a glow on paper is just a blur. What carries across is the
+ * structure: the same hairlines, the same tracking, the same tight radii,
+ * the same grid at lower opacity.
+ */
+:root[data-theme="light"] {
   --color-critical: #b3261e;
-  --color-critical-surface: #fdecea;
+  --color-critical-surface: #fdeceb;
   --color-warning: #8a5a00;
   --color-warning-surface: #fff4e0;
-  --color-success: #1e6b3c;
-  --color-success-surface: #e6f4ea;
-  --color-info: #1a56ad;
-  --color-info-surface: #e8f0fc;
+  --color-success: #0f6b45;
+  --color-success-surface: #e4f5ec;
+  --color-info: #0a6a80;
+  --color-info-surface: #e2f3f7;
 
-  /* Neutral surfaces */
-  --color-bg: #f7f7f8;
-  --color-surface: #ffffff;
+  --color-bg: #eef4f8;
+  --color-bg-deep: #e4edf3;
+  --color-surface: rgba(255, 255, 255, 0.92);
   --color-surface-raised: #ffffff;
-  --color-border: #d7d9dd;
-  --color-border-strong: #b6b9c0;
-  --color-text-primary: #1c1e21;
-  --color-text-secondary: #565a63;
+  --color-surface-solid: #ffffff;
+  --color-border: rgba(10, 106, 128, 0.18);
+  --color-border-strong: rgba(10, 106, 128, 0.42);
+
+  --color-text-primary: #0a1922;
+  --color-text-secondary: #4a6270;
   --color-text-on-accent: #ffffff;
-  --color-focus-ring: #1a56ad;
+  --color-focus-ring: #0a6a80;
+
+  --color-signal: #0a6a80;
+  --color-signal-2: #4a56c9;
+  --glow-rim: 0 1px 2px rgba(10, 41, 56, 0.08), 0 8px 24px -12px rgba(10, 41, 56, 0.22);
+  --glow-strong: 0 10px 30px -10px rgba(10, 106, 128, 0.35);
+  --glow-text: none;
+  --blur-panel: 8px;
+  --grid-line: rgba(10, 106, 128, 0.05);
+  --scan-line: transparent;
 
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --color-critical: #ff8a80;
-    --color-critical-surface: #3b1f1d;
-    --color-warning: #ffcc80;
-    --color-warning-surface: #3a2c12;
-    --color-success: #81c995;
-    --color-success-surface: #16301f;
-    --color-info: #8ab4f8;
-    --color-info-surface: #16243b;
+/*
+ * A light OS preference, with no explicit choice stored, gets the light
+ * theme. Guarded against `[data-theme="dark"]` so an explicit dark choice
+ * still wins on a light machine.
+ */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --color-critical: #b3261e;
+    --color-critical-surface: #fdeceb;
+    --color-warning: #8a5a00;
+    --color-warning-surface: #fff4e0;
+    --color-success: #0f6b45;
+    --color-success-surface: #e4f5ec;
+    --color-info: #0a6a80;
+    --color-info-surface: #e2f3f7;
 
-    --color-bg: #121316;
-    --color-surface: #1b1d21;
-    --color-surface-raised: #222429;
-    --color-border: #34373d;
-    --color-border-strong: #474b53;
-    --color-text-primary: #e8e9ec;
-    --color-text-secondary: #a7abb3;
-    --color-text-on-accent: #121316;
-    --color-focus-ring: #8ab4f8;
+    --color-bg: #eef4f8;
+    --color-bg-deep: #e4edf3;
+    --color-surface: rgba(255, 255, 255, 0.92);
+    --color-surface-raised: #ffffff;
+    --color-surface-solid: #ffffff;
+    --color-border: rgba(10, 106, 128, 0.18);
+    --color-border-strong: rgba(10, 106, 128, 0.42);
 
-    color-scheme: dark;
+    --color-text-primary: #0a1922;
+    --color-text-secondary: #4a6270;
+    --color-text-on-accent: #ffffff;
+    --color-focus-ring: #0a6a80;
+
+    --color-signal: #0a6a80;
+    --color-signal-2: #4a56c9;
+    --glow-rim: 0 1px 2px rgba(10, 41, 56, 0.08), 0 8px 24px -12px rgba(10, 41, 56, 0.22);
+    --glow-strong: 0 10px 30px -10px rgba(10, 106, 128, 0.35);
+    --glow-text: none;
+    --blur-panel: 8px;
+    --grid-line: rgba(10, 106, 128, 0.05);
+    --scan-line: transparent;
+
+    color-scheme: light;
   }
-}
-
-:root[data-theme="dark"] {
-  --color-critical: #ff8a80;
-  --color-critical-surface: #3b1f1d;
-  --color-warning: #ffcc80;
-  --color-warning-surface: #3a2c12;
-  --color-success: #81c995;
-  --color-success-surface: #16301f;
-  --color-info: #8ab4f8;
-  --color-info-surface: #16243b;
-
-  --color-bg: #121316;
-  --color-surface: #1b1d21;
-  --color-surface-raised: #222429;
-  --color-border: #34373d;
-  --color-border-strong: #474b53;
-  --color-text-primary: #e8e9ec;
-  --color-text-secondary: #a7abb3;
-  --color-text-on-accent: #121316;
-  --color-focus-ring: #8ab4f8;
-
-  color-scheme: dark;
 }

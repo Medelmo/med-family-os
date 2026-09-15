@@ -1,20 +1,84 @@
+/*
+ * Sign-in and first-run (ADR-026).
+ *
+ * The first thing anybody sees, so it sets the world before the world
+ * arrives: the same ground, the same rings that will be behind the
+ * assistant a moment later, the same machined panel. What it deliberately
+ * does *not* have is the android — the greeting is the payoff of signing
+ * in, and spending it on the form would leave nothing for the moment
+ * afterwards.
+ */
+
 .page {
+  position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-6);
+  overflow: hidden;
+}
+
+/* The rings, echoing the welcome screen so the two read as one sequence. */
+.page::before,
+.page::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  pointer-events: none;
+  translate: -50% -50%;
+}
+
+.page::before {
+  width: min(70vmin, 560px);
+  aspect-ratio: 1;
+  border-style: dashed;
+  border-color: var(--color-border-strong);
+  animation: authSpin 60s linear infinite;
+}
+
+.page::after {
+  width: min(92vmin, 740px);
+  aspect-ratio: 1;
+  opacity: 0.5;
+  animation: authSpin 96s linear infinite reverse;
+}
+
+@keyframes authSpin {
+  to {
+    rotate: 360deg;
+  }
 }
 
 .panel {
+  position: relative;
   width: 100%;
   max-width: 420px;
+  animation: authArrive var(--dur-slow) var(--ease-out) both;
+}
+
+@keyframes authArrive {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .title {
   font-size: var(--text-h1-size);
   line-height: var(--text-h1-line);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
   margin: 0 0 var(--space-2);
+  text-shadow: var(--glow-text);
 }
 
 .description {
@@ -30,8 +94,21 @@
 }
 
 .error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
   color: var(--color-critical);
   font-size: var(--text-compact-size);
   line-height: var(--text-compact-line);
   margin: 0 0 var(--space-4);
+}
+
+/* A shape as well as a colour (WCAG 1.4.1). */
+.error::before {
+  content: "";
+  flex: none;
+  width: 3px;
+  align-self: stretch;
+  background: var(--color-critical);
+  border-radius: var(--radius-pill);
 }

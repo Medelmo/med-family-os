@@ -105,7 +105,17 @@ export default async function BackupPage() {
           </div>
         </dl>
 
-        <div className={backupStyles.tableWrap}>
+        {/* Keyboard-reachable for the same reason as the finance import
+            preview: a scrollable region nobody can focus is a column
+            nobody can reach (WCAG 2.1.1). */}
+        <div
+          className={backupStyles.tableWrap}
+          tabIndex={0}
+          role="group"
+          aria-label={t("countsCaption", {
+            at: format.dateTime(status.takenAt, { dateStyle: "medium", timeStyle: "short" }),
+          })}
+        >
           <table className={backupStyles.table}>
             <caption className={backupStyles.caption}>
               {t("countsCaption", {

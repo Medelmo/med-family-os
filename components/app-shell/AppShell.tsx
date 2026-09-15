@@ -29,7 +29,12 @@ export async function AppShell({ userName, unreadNotifications, children }: AppS
   return (
     <div className={styles.shell}>
       <header className={styles.topBar}>
-        <span className={styles.appName}>{tCommon("appName")}</span>
+        <span className={styles.appName}>
+          {/* The live core, decorative only — the name beside it is what a
+              screen reader announces. */}
+          <span className={styles.mark} aria-hidden="true" />
+          {tCommon("appName")}
+        </span>
         <div className={styles.userArea}>
           <span className={styles.userName}>{userName}</span>
           <form action={signOutAction}>

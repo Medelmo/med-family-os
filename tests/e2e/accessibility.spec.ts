@@ -113,6 +113,21 @@ test.describe("signed in", () => {
     await expectNoViolations(page);
   });
 
+  // The one full-bleed screen, and the only one with an animated figure
+  // on it — so the checks that matter most are the image's accessible
+  // name and the contrast of luminous text on a near-black ground.
+  test("welcome moment has no automatically detectable WCAG violations", async ({ page }) => {
+    await page.goto("/welcome");
+    await expect(page.getByRole("img", { name: /assistant/i })).toBeVisible();
+    await expectNoViolations(page);
+  });
+
+  test("language page has no automatically detectable WCAG violations", async ({ page }) => {
+    await page.goto("/settings/language");
+    await expect(page.getByRole("heading", { name: "Language", level: 1 })).toBeVisible();
+    await expectNoViolations(page);
+  });
+
   test("export page has no automatically detectable WCAG violations", async ({ page }) => {
     await page.goto("/settings/export");
     await expect(page.getByRole("heading", { name: "Take your data out", level: 1 })).toBeVisible();
@@ -138,7 +153,7 @@ test.describe("signed in", () => {
   // non-wrapping flex row, so each new destination pushed the page wider
   // until, at eight, a phone viewport overflowed and taps began landing on
   // the wrong element.
-  for (const path of ["/today", "/calendar", "/cases", "/inbox", "/notifications", "/search", "/more", "/finance", "/trips", "/assets", "/documents", "/settings", "/settings/integrations", "/settings/export", "/settings/backup"]) {
+  for (const path of ["/today", "/calendar", "/cases", "/inbox", "/notifications", "/search", "/more", "/finance", "/trips", "/assets", "/documents", "/settings", "/settings/integrations", "/settings/export", "/settings/backup", "/settings/language", "/welcome"]) {
     test(`${path} does not scroll horizontally`, async ({ page }) => {
       await page.goto(path);
       const overflow = await page.evaluate(() => ({

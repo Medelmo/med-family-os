@@ -1,0 +1,219 @@
+/*
+ * The assistant's materials (ADR-026).
+ *
+ * Every colour comes from a token, so the android is lit by whatever
+ * theme is active rather than carrying its own palette. In the light
+ * theme the same geometry reads as a brushed instrument instead of an
+ * emitting one, which is the correct translation and not a fallback.
+ */
+
+.android {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* ---------- structure ---------- */
+
+.plate {
+  fill: var(--color-surface-raised);
+  stroke: var(--color-border-strong);
+  stroke-width: 0.9;
+}
+
+.plateLit {
+  fill: var(--color-info-surface);
+  stroke: var(--color-border-strong);
+  stroke-width: 0.9;
+}
+
+.seam {
+  fill: none;
+  stroke: var(--color-border-strong);
+  stroke-width: 0.8;
+  opacity: 0.55;
+}
+
+.trace,
+.traceLive {
+  fill: none;
+  stroke: var(--color-signal);
+  stroke-width: 0.8;
+  stroke-linecap: round;
+  opacity: 0.45;
+}
+
+.traceDim {
+  fill: none;
+  stroke: var(--color-signal-2);
+  stroke-width: 0.7;
+  opacity: 0.3;
+}
+
+/* Current running along a trace. The dash pattern is the current; the
+   offset animation is it moving. */
+.traceLive {
+  stroke-dasharray: 5 9;
+  animation: flow 2.4s linear infinite;
+}
+
+@keyframes flow {
+  to {
+    stroke-dashoffset: -60;
+  }
+}
+
+/* ---------- the lit parts ---------- */
+
+.core,
+.coreBar {
+  fill: var(--color-signal);
+  animation: corePulse 3.6s var(--ease-in-out) infinite;
+}
+
+.coreBar {
+  opacity: 0.6;
+}
+
+.coreGlow {
+  fill: var(--color-signal);
+  opacity: 0.45;
+  filter: url(#mfos-soften);
+  animation: corePulse 3.6s var(--ease-in-out) infinite;
+}
+
+.node {
+  fill: var(--color-signal);
+  opacity: 0.8;
+  animation: corePulse 3.6s var(--ease-in-out) infinite;
+}
+
+.node2 {
+  fill: var(--color-signal-2);
+  opacity: 0.7;
+  animation: corePulse 3.6s var(--ease-in-out) 0.7s infinite;
+}
+
+@keyframes corePulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ---------- eyes ---------- */
+
+.iris {
+  fill: var(--color-signal);
+}
+
+.irisHot {
+  fill: var(--color-text-primary);
+  opacity: 0.95;
+}
+
+.irisGlow {
+  fill: var(--color-signal);
+  opacity: 0.5;
+  filter: url(#mfos-soften);
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+
+/*
+ * The blink.
+ *
+ * 93% of the cycle open, one sharp close, back. Both lids run the same
+ * keyframes with 50ms between them — humans do not blink perfectly
+ * symmetrically, and that fraction is the difference between a face and a
+ * pair of lights going off together.
+ */
+.lid {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: blink 6.4s var(--ease-in-out) infinite;
+}
+
+.lidRight {
+  animation-delay: 0.05s;
+}
+
+@keyframes blink {
+  0%,
+  93%,
+  100% {
+    transform: scaleY(1);
+  }
+  96.5% {
+    transform: scaleY(0.06);
+  }
+}
+
+/* ---------- the bust ---------- */
+
+/* Alive when idle. Five pixels over seven seconds — below the threshold
+   of "something is moving", above the threshold of "this is a picture". */
+.bust {
+  animation: float 7s var(--ease-in-out) infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* ---------- the mouth ---------- */
+
+/*
+ * At rest the grille is a flat line. It only moves while speech is
+ * actually playing — the `speaking` class is set by the utterance's own
+ * start and end events, so the mouth stops exactly when the voice does
+ * rather than on a timer that guessed the duration.
+ */
+.vox {
+  fill: var(--color-signal);
+  transform-origin: center;
+  transform-box: fill-box;
+  transform: scaleY(0.18);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.speaking .vox {
+  animation: vox 0.36s var(--ease-in-out) infinite;
+}
+
+@keyframes vox {
+  0%,
+  100% {
+    transform: scaleY(0.2);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+/* The eyes brighten while it talks. */
+.speaking .irisGlow {
+  opacity: 0.9;
+}
+
+/*
+ * Reduced motion.
+ *
+ * globals.css already neutralises the durations. What is left to do here
+ * is make sure the *resting pose* is a good one: the mouth sits half open
+ * rather than shut, so a still android still reads as one that speaks.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .vox {
+    transform: scaleY(0.55);
+  }
+}
