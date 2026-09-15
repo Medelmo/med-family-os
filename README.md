@@ -4,6 +4,8 @@ Private, self-hosted household operating system for **attention, workflows, cont
 
 This repository is an implementation-ready architecture package derived from the original scaffold and strengthened after a deep product, domain, security, deployment, integration, and UX review.
 
+**Running it:** see [`docs/GETTING-STARTED.md`](docs/GETTING-STARTED.md) — local development, first sign-in, hosting on a Docker VM, and the recommended configuration.
+
 ## What changed
 
 The original scaffold had a good domain-first direction, but it left several critical decisions implicit. This version makes them explicit:
