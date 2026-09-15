@@ -1,0 +1,43 @@
+/*
+ * The assistant on Today.
+ *
+ * No card chrome of its own: RobotFace already carries a rounded edge, a
+ * hairline ring and a shadow, so wrapping it in a second bordered panel
+ * would be a box inside a box. This rule set does one thing — decide how
+ * much of the screen the face is allowed to take.
+ *
+ * Sized as a companion to the day's list rather than a hero. The brief
+ * asks for it to be prominent without overwhelming the task and deadline
+ * information, and on this screen the information is the point: the face
+ * sits under the heading and above the first section, small enough that
+ * the day's first item is still visible on a phone.
+ */
+
+.wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.face {
+  width: 108px;
+  /* The artwork is square and the renderer holds its own aspect ratio, so
+     height follows and there is nothing here to keep in sync. */
+}
+
+@media (min-width: 720px) {
+  .wrap {
+    /* Room to breathe once there is width for it, without becoming the
+       thing the eye lands on first. */
+    justify-content: flex-start;
+  }
+
+  .face {
+    width: 132px;
+  }
+}
+
+@media (max-width: 400px) {
+  .face {
+    width: 96px;
+  }
+}

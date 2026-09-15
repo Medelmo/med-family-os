@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { Android } from "../../components/assistant/Android";
+import { AIFace, AIFaceProvider, useAIFace } from "../../components/ai-face";
 import { useSpeech } from "../../components/assistant/useSpeech";
 import styles from "./welcome.module.css";
 
@@ -35,11 +35,20 @@ const TYPE_MS = 72;
  * animation. A browser that blocks audio says so and offers one button. A
  * person who asked for reduced motion gets the line, whole, immediately.
  */
-export function WelcomeClient({ name, attentionCount, next }: WelcomeClientProps) {
+export function WelcomeClient(props: WelcomeClientProps) {
+  return (
+    <AIFaceProvider initial={{ mode: "auto", state: "happy" }}>
+      <WelcomeStage {...props} />
+    </AIFaceProvider>
+  );
+}
+
+function WelcomeStage({ name, attentionCount, next }: WelcomeClientProps) {
   const t = useTranslations("welcome");
   const locale = useLocale();
   const router = useRouter();
   const speech = useSpeech(locale);
+  const { setAiFace } = useAIFace();
 
   const greeting = t("greeting", { name });
   const summary =
@@ -64,6 +73,14 @@ export function WelcomeClient({ name, attentionCount, next }: WelcomeClientProps
     // not to a greeting that has already happened.
     window.setTimeout(() => router.replace(next), reduced ? 0 : 420);
   }, [leaving, next, reduced, router, speech]);
+
+  /* ---- the face follows the speech ----
+     Auto mode: `speaking` outranks the explicit `happy` while the voice
+     plays and hands it straight back when it stops, which is the priority
+     ladder doing its job rather than this component sequencing states. */
+  useEffect(() => {
+    setAiFace({ speaking: speech.status === "speaking" });
+  }, [setAiFace, speech.status]);
 
   /* ---- the line types itself ----
      No "has this run already" ref. An earlier version guarded with one and
@@ -149,8 +166,13 @@ export function WelcomeClient({ name, attentionCount, next }: WelcomeClientProps
         <span className={styles.ringSlow} />
       </div>
 
-      <div className={styles.androidWrap}>
-        <Android state={speech.status === "speaking" ? "speaking" : "idle"} label={t("androidLabel")} />
+      {/*
+        The one placement that is the hero: eager and high priority, because
+        the whole screen is waiting on it. `sizes` mirrors `.faceWrap`'s own
+        width so the browser picks the right artwork variant.
+      */}
+      <div className={styles.faceWrap}>
+        <AIFace sizes="(max-width: 520px) 66vw, 340px" priority />
       </div>
 
       {/*

@@ -1,0 +1,327 @@
+/*
+ * The Cyber Guardian's materials.
+ *
+ * Ported from `ai-family-robot-face/src/styles.css` — the rules that
+ * belong to the face itself, not the demo page around it. Values are the
+ * package's; what changed is that global class names became CSS Module
+ * locals (ADR-011), and the demo's own literals became this application's
+ * tokens where the two already agreed. The palettes match closely: the
+ * package is cyan-on-near-black, and so is the Holographic HUD.
+ */
+
+.face {
+  /*
+   * The plate is dark in both themes, deliberately.
+   *
+   * The artwork is a photographic cutout with a feathered, partly
+   * transparent edge, and the SVG overlay's masks, lids and brows are all
+   * near-black fills — every one of them authored against a near-black
+   * ground. Composited over the light theme's `--color-bg-deep` (#e4edf3)
+   * the character turns into grey smoke and the mouth mask reads as a
+   * black bar laid across the face. Caught by looking at it: a screenshot
+   * at 1280px in light theme, which every check up to that point had been
+   * perfectly happy with.
+   *
+   * So the face carries its own ground, the way a photograph carries its
+   * own, and reads as a framed viewport on a light page rather than a
+   * cutout that has lost its background.
+   */
+  --face-plate: #020407;
+
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--face-plate);
+  box-shadow:
+    0 35px 100px rgba(0, 0, 0, 0.55),
+    0 0 0 1px var(--color-border-strong);
+  transform: translateY(var(--head-lift)) rotate(var(--head-tilt));
+  transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+  isolation: isolate;
+}
+
+.art {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  user-select: none;
+  transition: filter 0.6s var(--ease-out);
+}
+
+.scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(90, 223, 255, 0.045) 0px,
+    rgba(90, 223, 255, 0.045) 1px,
+    transparent 1px,
+    transparent 5px
+  );
+  mix-blend-mode: screen;
+  animation: scan var(--scan-speed) linear infinite;
+  opacity: 0.9;
+}
+
+.particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.particles i {
+  position: absolute;
+  left: calc((var(--i) * 47px) % 100%);
+  top: calc((var(--i) * 79px) % 100%);
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: #62dcff;
+  box-shadow: 0 0 12px #24c5ff;
+  opacity: 0.25;
+  animation: particle calc(2.8s + (var(--i) * 0.14s)) ease-in-out infinite alternate;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* ---------- eyes ---------- */
+
+.eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: translate(var(--glance-x), var(--glance-y));
+  transition: transform 0.6s ease;
+}
+
+.eyeLeft,
+.eyeRight {
+  /* Named for the renderer's sake; both sides share the geometry above. */
+  will-change: transform;
+}
+
+.eyeMask {
+  fill: rgba(1, 7, 12, 0.18);
+}
+
+.irisCore {
+  fill: rgba(77, 220, 255, 0.95);
+  opacity: calc(0.65 * var(--eye-glow));
+}
+
+.irisRing {
+  fill: none;
+  stroke: rgba(74, 220, 255, 0.95);
+  stroke-width: 8;
+  opacity: calc(0.55 * var(--eye-glow));
+}
+
+.eyeSpec {
+  fill: rgba(77, 220, 255, 0.95);
+  opacity: 0.95;
+}
+
+.lid {
+  fill: rgba(6, 15, 24, 0.92);
+  transition: transform 0.18s ease;
+  transform-origin: center;
+}
+
+.lidTop {
+  transform: translateY(calc(var(--lid) * -55px));
+}
+
+.lidBottom {
+  transform: translateY(calc(var(--lid) * 55px));
+}
+
+/* ---------- brows ---------- */
+
+.brows path {
+  fill: none;
+  stroke: rgba(8, 17, 28, 0.88);
+  stroke-width: 24;
+  stroke-linecap: round;
+  transform-box: fill-box;
+  transition: transform 0.6s ease;
+}
+
+.browLeft {
+  transform: rotate(calc(var(--brow) * 8deg));
+  transform-origin: 590px 520px;
+}
+
+.browRight {
+  transform: rotate(calc(var(--brow) * -8deg));
+  transform-origin: 946px 520px;
+}
+
+/* ---------- mouth ---------- */
+
+.mouthMask {
+  fill: rgba(4, 12, 19, 0.9);
+}
+
+.mouthLine {
+  stroke: rgba(110, 221, 255, 0.45);
+  stroke-width: 7;
+  fill: none;
+}
+
+/*
+ * No transition on the opening or the teeth.
+ *
+ * The package had `transition: transform .14s` here, which is correct
+ * when the value arrives in discrete jumps. It is now driven every frame
+ * by `useLipSync`, which does its own smoothing — a CSS transition on top
+ * of that is a second low-pass filter, and the mouth lags the voice by a
+ * visible beat.
+ */
+.mouthOpening {
+  fill: rgba(0, 4, 7, 0.98);
+  transform-origin: 768px 820px;
+  transform: scaleY(calc(0.15 + var(--mouth-open) * 0.95));
+}
+
+.mouthTeeth {
+  fill: rgba(196, 248, 255, 0.85);
+  transform-origin: 768px 816px;
+  transform: scaleY(calc(0.12 + var(--mouth-open) * 0.55));
+  opacity: calc(0.1 + var(--mouth-open) * 0.9);
+}
+
+.mouthEnergy {
+  fill: rgba(77, 220, 255, 0.95);
+  opacity: 0.7;
+  animation: mouthPulse 1.1s ease-in-out infinite;
+}
+
+.mouthEnergyRight {
+  animation-delay: 0.35s;
+}
+
+.chinEnergy path {
+  fill: rgba(77, 220, 255, 0.95);
+}
+
+.chinEnergy {
+  opacity: calc(0.28 * var(--pulse));
+}
+
+/* ---------- state-specific treatment ---------- */
+
+.blinking .lidTop,
+.blinking .lidBottom {
+  transform: translateY(0);
+}
+
+.speaking .mouthEnergy {
+  animation-duration: 0.25s;
+}
+
+.state_alert .art,
+.state_error .art {
+  filter: saturate(1.12) brightness(1.02);
+}
+
+.state_happy .mouthMask,
+.state_loving .mouthMask,
+.state_excited .mouthMask,
+.state_celebrating .mouthMask {
+  opacity: 0.78;
+}
+
+.state_sad .art,
+.state_sleepy .art {
+  filter: saturate(0.72) brightness(0.9);
+}
+
+/*
+ * Error and alert are the two states that must be unmistakable, and
+ * colour alone does not carry that (WCAG 1.4.1) — so they also move.
+ * A slow breath for alert, a tighter one for error.
+ */
+.state_alert {
+  animation: alertBreath 2.4s ease-in-out infinite;
+}
+
+.state_error {
+  animation: alertBreath 1.5s ease-in-out infinite;
+}
+
+@keyframes scan {
+  from {
+    transform: translateY(-3%);
+  }
+  to {
+    transform: translateY(3%);
+  }
+}
+
+@keyframes particle {
+  from {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.15;
+  }
+  to {
+    transform: translate3d(0, -14px, 0);
+    opacity: 0.55;
+  }
+}
+
+@keyframes mouthPulse {
+  0%,
+  100% {
+    transform: scale(0.88);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+@keyframes alertBreath {
+  0%,
+  100% {
+    box-shadow:
+      0 35px 100px rgba(0, 0, 0, 0.55),
+      0 0 0 1px var(--color-border-strong);
+  }
+  50% {
+    box-shadow:
+      0 35px 100px rgba(0, 0, 0, 0.55),
+      0 0 0 2px var(--color-critical),
+      0 0 34px -6px var(--color-critical);
+  }
+}
+
+/*
+ * Reduced motion.
+ *
+ * globals.css already neutralises durations application-wide, and the
+ * JavaScript controllers stop scheduling. What is left to do here is make
+ * the *resting pose* a good one — the face keeps its state, its glow and
+ * its expression, and simply holds still. Reduced, not removed.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .scanlines,
+  .particles {
+    display: none;
+  }
+
+  .face {
+    /* No head tilt drift; the expression still reads from eyes and mouth. */
+    transform: none;
+  }
+}

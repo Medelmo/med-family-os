@@ -97,6 +97,46 @@ test.describe("the welcome moment", () => {
    */
 });
 
+/**
+ * The assistant on the home screen.
+ *
+ * The expression itself is not asserted — which state the face wears is a
+ * CSS custom property on a div, and pinning it here would make every
+ * tuning change a test change. What is asserted is the part a household
+ * depends on: the face is announced rather than left as decoration, it is
+ * announced exactly once, and it does not push the day's actual list off
+ * the screen.
+ */
+test.describe("the assistant on Today", () => {
+  test("is present and described", async ({ page }) => {
+    await page.goto("/today");
+    await expect(page.getByRole("img", { name: /assistant/i })).toBeVisible();
+  });
+
+  test("does not displace the day's own heading", async ({ page }) => {
+    await page.goto("/today");
+
+    const heading = page.getByRole("heading", { name: "Today", level: 1 });
+    await expect(heading).toBeVisible();
+
+    // The brief asks for the face to be prominent without overwhelming the
+    // task and deadline information. Concretely: the heading is still above
+    // the fold on a phone, with the face below it rather than in front.
+    const box = await heading.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.y).toBeLessThan(page.viewportSize()!.height / 2);
+  });
+
+  test("keeps the artwork out of the accessibility tree twice over", async ({ page }) => {
+    await page.goto("/today");
+
+    // The wrapper carries the name; the <img> inside it must not repeat it.
+    // A face announced twice is worse than one announced once.
+    const named = page.getByRole("img", { name: /assistant/i });
+    await expect(named).toHaveCount(1);
+  });
+});
+
 test.describe("language", () => {
   test("switching to German changes the whole interface", async ({ page }) => {
     await setLanguage(page, "de", "Save language");

@@ -9,7 +9,41 @@ import { SIGNED_OUT_STATE } from "./helpers";
 // which is why the keyboard journey below is asserted explicitly.
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
+/**
+ * Waits for entrance animations to finish before measuring.
+ *
+ * axe computes contrast from composited colour, so an element caught
+ * part-way through a fade-in is measured against a blend that is nobody's
+ * resting state. The welcome screen made this concrete: its Continue
+ * button is 6.3:1 once it has arrived and 3.9:1 at 78% opacity, and
+ * whether the scan landed before or after the fade depended on how busy
+ * the machine was — so the suite failed roughly every other run on a
+ * button that is not actually failing.
+ *
+ * Only *finite* animations are waited on. The decorative ones — the
+ * rotating rings, the scanlines, the assistant's own idle loop — run
+ * forever by design, and waiting for those would simply never return.
+ *
+ * Bounded and quiet on timeout: this is a settle step, not an assertion.
+ * If something really does animate forever, the scan below still runs and
+ * still reports whatever it finds.
+ */
+async function settle(page: Page) {
+  await page
+    .waitForFunction(
+      () =>
+        document.getAnimations().every((animation) => {
+          const iterations = animation.effect?.getTiming().iterations ?? 1;
+          return iterations === Infinity || animation.playState === "finished";
+        }),
+      undefined,
+      { timeout: 3_000 }
+    )
+    .catch(() => {});
+}
+
 async function expectNoViolations(page: Page) {
+  await settle(page);
   const { violations } = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
   expect(violations.map((v) => ({ id: v.id, nodes: v.nodes.length }))).toEqual([]);
 }

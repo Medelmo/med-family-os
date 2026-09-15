@@ -5,6 +5,7 @@ import { TaskCard } from "../../../components/tasks/TaskCard";
 import { Card } from "../../../components/ui/Card";
 import { toIsoDate } from "../../../domain/attention/rules";
 import type { TaskListItem } from "../../../application/queries/tasks/getTasks";
+import { TodayFace } from "./TodayFace";
 import styles from "./today.module.css";
 
 function toCardData(task: TaskListItem) {
@@ -25,9 +26,26 @@ export default async function TodayPage() {
   const t = await getTranslations("today");
   const tHome = await getTranslations("home");
   const format = await getFormatter();
-  const { dueToday, waiting, deadlines, events } = await getToday(actor, householdId);
+  const { todayIso, dueToday, waiting, deadlines, events } = await getToday(actor, householdId);
 
   const isEmpty = dueToday.length === 0 && waiting.length === 0 && deadlines.length === 0 && events.length === 0;
+
+  /*
+   * What the assistant's expression is derived from.
+   *
+   * Real rows, counted here on the server — not a new event bus and not a
+   * second copy of the attention rules. `dueToday` and `deadlines` are both
+   * "due on or *before* today" (getAttention.ts), so the ones strictly
+   * before today's date are exactly the overdue ones.
+   *
+   * Events are excluded from the workload on purpose: a dentist appointment
+   * at four is something to know, not something outstanding, and counting
+   * it would have the face look busy on a day with nothing to do.
+   */
+  const overdueCount =
+    dueToday.filter((task) => task.dueOn && toIsoDate(task.dueOn) < todayIso).length +
+    deadlines.filter((deadline) => toIsoDate(deadline.dueOn) < todayIso).length;
+  const quiet = dueToday.length === 0 && waiting.length === 0 && deadlines.length === 0;
 
   return (
     <div className={styles.page}>
@@ -35,6 +53,8 @@ export default async function TodayPage() {
         <h1 className={styles.title}>{t("title")}</h1>
         <p className={styles.greeting}>{tHome("greeting", { name: userName })}</p>
       </header>
+
+      <TodayFace overdueCount={overdueCount} quiet={quiet} />
 
       {isEmpty && (
         <Card>

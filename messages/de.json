@@ -739,9 +739,30 @@
     "voiceOn": "Ton an",
     "voiceOff": "Ton aus",
     "playGreeting": "Begrüßung abspielen",
-    "androidLabel": "Der Haushaltsassistent erwacht und begrüßt dich",
     "blockedNote": "Dein Browser lässt Ton erst nach einer Interaktion zu. Tippe auf „Begrüßung abspielen“, um sie zu hören.",
     "unavailableNote": "Auf diesem Gerät gibt es keine Stimme für deine Sprache — die Begrüßung wird angezeigt statt gesprochen."
+  },
+  "aiFace": {
+    "state": {
+      "neutral": "Der Assistent, ruhend",
+      "happy": "Der Assistent, zufrieden",
+      "excited": "Der Assistent, begeistert",
+      "loving": "Der Assistent, zugewandt",
+      "sad": "Der Assistent, betrübt",
+      "angry": "Der Assistent, verärgert",
+      "worried": "Der Assistent, besorgt",
+      "surprised": "Der Assistent, überrascht",
+      "confused": "Der Assistent, ratlos",
+      "thinking": "Der Assistent, überlegt",
+      "sleepy": "Der Assistent, im Ruhezustand",
+      "focused": "Der Assistent, konzentriert",
+      "listening": "Der Assistent, hört zu",
+      "speaking": "Der Assistent, spricht",
+      "celebrating": "Der Assistent, freut sich",
+      "alert": "Der Assistent, weist auf etwas Dringendes hin",
+      "error": "Der Assistent, meldet einen Fehler",
+      "curious": "Der Assistent, neugierig"
+    }
   },
   "assistant": {
     "title": "Assistent",

@@ -739,9 +739,30 @@
     "voiceOn": "Voice on",
     "voiceOff": "Voice off",
     "playGreeting": "Play greeting",
-    "androidLabel": "The household assistant, waking to greet you",
     "blockedNote": "Your browser only allows sound after you interact with the page. Press Play greeting to hear it.",
     "unavailableNote": "This device has no voice for your language, so the greeting is shown rather than spoken."
+  },
+  "aiFace": {
+    "state": {
+      "neutral": "The assistant, at rest",
+      "happy": "The assistant, looking pleased",
+      "excited": "The assistant, looking delighted",
+      "loving": "The assistant, looking fond",
+      "sad": "The assistant, looking sorry",
+      "angry": "The assistant, looking cross",
+      "worried": "The assistant, looking concerned",
+      "surprised": "The assistant, looking surprised",
+      "confused": "The assistant, looking puzzled",
+      "thinking": "The assistant, thinking something over",
+      "sleepy": "The assistant, resting quietly",
+      "focused": "The assistant, concentrating",
+      "listening": "The assistant, listening",
+      "speaking": "The assistant, speaking",
+      "celebrating": "The assistant, celebrating",
+      "alert": "The assistant, flagging something urgent",
+      "error": "The assistant, reporting that something failed",
+      "curious": "The assistant, looking curious"
+    }
   },
   "assistant": {
     "title": "Assistant",
