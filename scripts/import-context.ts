@@ -16,10 +16,19 @@
  * Run with tsx, because the commands are TypeScript with extensionless
  * imports that plain node cannot resolve:
  *
- *   npx tsx scripts/import-context.ts --email you@example.com --file items.jsonl
- *   npx tsx scripts/import-context.ts --email you@example.com --file items.jsonl --apply
+ *   pnpm exec tsx scripts/import-context.ts --email you@example.com --file items.jsonl
+ *   pnpm exec tsx scripts/import-context.ts --email you@example.com --file items.jsonl --apply
  *
  * Without `--apply` it changes nothing and prints what it would do.
+ *
+ * `pnpm exec`, not `npx`, and tsx is an explicit devDependency — both for
+ * the same reason, learned the hard way. tsx was originally reachable only
+ * as a transitive dependency, which worked on a development machine and
+ * failed inside the container: `npx` responds to a missing binary by
+ * fetching it from the registry, and the compose network the import runs
+ * on is `internal: true` with no route to the internet. The symptom was a
+ * hang rather than "tsx is not installed". `pnpm exec` resolves locally
+ * only and says so immediately when something is missing.
  */
 
 import { readFileSync } from "node:fs";
@@ -212,7 +221,7 @@ async function main() {
     console.error(
       [
         "Usage:",
-        "  npx tsx scripts/import-context.ts --email <you@example.com> --file <items.jsonl> [--apply]",
+        "  pnpm exec tsx scripts/import-context.ts --email <you@example.com> --file <items.jsonl> [--apply]",
         "",
         "Without --apply nothing is written and the plan is printed.",
       ].join("\n")

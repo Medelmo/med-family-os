@@ -9,3 +9,11 @@ coverage
 .DS_Store
 *.tsbuildinfo
 docker-compose.override.yml
+
+# Import files and the deployment scripts that embed them carry real
+# household content — diagnoses, benefits files, legal matters. One was
+# written into the repository root by accident and caught by `git status`
+# before a `git add -A` could take it; these two lines are so that the next
+# one is caught by git instead of by luck.
+*.jsonl
+proxmox-*.sh
