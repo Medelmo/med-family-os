@@ -31,6 +31,10 @@ export default async function SettingsPage() {
     // Open to everybody: what language you read in is not an
     // administrative decision about the household.
     { href: "/settings/language", label: "language", hint: "languageHint" },
+    // Open to everybody too, for the same reason (ADR-029): which design
+    // world you read the household's attention list in is not an
+    // administrative decision either.
+    { href: "/settings/appearance", label: "appearance", hint: "appearanceHint" },
     // Offered to everybody, deliberately. An export is the one thing on
     // this page that is not administration: it is a person taking their
     // own data, and it gives each of them exactly what they can see.
