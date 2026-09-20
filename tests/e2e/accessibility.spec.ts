@@ -162,6 +162,12 @@ test.describe("signed in", () => {
     await expectNoViolations(page);
   });
 
+  test("appearance page has no automatically detectable WCAG violations", async ({ page }) => {
+    await page.goto("/settings/appearance");
+    await expect(page.getByRole("heading", { name: "Appearance", level: 1 })).toBeVisible();
+    await expectNoViolations(page);
+  });
+
   test("export page has no automatically detectable WCAG violations", async ({ page }) => {
     await page.goto("/settings/export");
     await expect(page.getByRole("heading", { name: "Take your data out", level: 1 })).toBeVisible();
@@ -187,7 +193,7 @@ test.describe("signed in", () => {
   // non-wrapping flex row, so each new destination pushed the page wider
   // until, at eight, a phone viewport overflowed and taps began landing on
   // the wrong element.
-  for (const path of ["/today", "/calendar", "/cases", "/inbox", "/notifications", "/search", "/more", "/finance", "/trips", "/assets", "/documents", "/settings", "/settings/integrations", "/settings/export", "/settings/backup", "/settings/language", "/welcome"]) {
+  for (const path of ["/today", "/calendar", "/cases", "/inbox", "/notifications", "/search", "/more", "/finance", "/trips", "/assets", "/documents", "/settings", "/settings/integrations", "/settings/export", "/settings/backup", "/settings/language", "/settings/appearance", "/welcome"]) {
     test(`${path} does not scroll horizontally`, async ({ page }) => {
       await page.goto(path);
       const overflow = await page.evaluate(() => ({
@@ -266,5 +272,49 @@ test.describe("signed in", () => {
     ]);
     // Colour alone must not communicate where you are (CLAUDE.md §13).
     await expect(nav.getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");
+  });
+});
+
+// ADR-029: nine additional visual worlds, each a pure token swap behind
+// `[data-design]`. Every one of them gets the same axe pass the default
+// Holographic HUD already gets on Today — a future world that fails
+// contrast fails CI the same way a future locale with un-translated
+// strings would. The ids are a literal list rather than an import from
+// app/design-worlds.ts: this suite means to exercise the cookie exactly
+// the way a real browser sets it, not the module that defines it.
+test.describe("design worlds", () => {
+  const DESIGN_IDS = ["hud", "paper", "bento", "terminal", "aurora", "clinical", "kraft", "slate", "atlas", "ledger"];
+
+  for (const design of DESIGN_IDS) {
+    test(`today has no automatically detectable WCAG violations in the "${design}" world`, async ({ page }) => {
+      await page.goto("/today");
+      await page.context().addCookies([{ name: "med-family-os-design", value: design, url: page.url() }]);
+      await page.reload();
+      await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
+      await expectNoViolations(page);
+    });
+  }
+
+  test("choosing a world previews it immediately, on the settings page itself", async ({ page }) => {
+    await page.goto("/settings/appearance");
+    await expect(page.locator("html")).not.toHaveAttribute("data-design", "terminal");
+
+    await page.getByRole("radio", { name: /Terminal Zero/ }).check();
+    // No round trip: the preview is a client-side attribute set on
+    // `change`, and the settings page's own panel reads it back
+    // immediately — the whole point of AppearanceForm.preview().
+    await expect(page.locator("html")).toHaveAttribute("data-design", "terminal");
+  });
+
+  test("saving a world persists it across a reload", async ({ page }) => {
+    await page.goto("/settings/appearance");
+
+    await page.getByRole("radio", { name: /Kraft & Type/ }).check();
+    await page.getByRole("button", { name: "Save appearance" }).click();
+    await expect(page.getByText("Appearance changed.")).toBeVisible();
+
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-design", "kraft");
+    await expect(page.getByRole("radio", { name: /Kraft & Type/ })).toBeChecked();
   });
 });

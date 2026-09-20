@@ -1,0 +1,106 @@
+/*
+ * The design-world picker (ADR-029).
+ *
+ * Each option is a native radio wearing a card, not a styled <div> role
+ * play: keyboard and screen-reader behaviour for "choose one of ten" is
+ * exactly what a radio group already does, and reproducing it in ARIA
+ * would only be a chance to get it wrong.
+ */
+.fieldset {
+  border: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+}
+
+.legend {
+  font-family: var(--font-display);
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  padding: 0;
+  margin-bottom: var(--space-3);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+
+.option {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+
+/* Not display:none — that would drop it from the accessibility tree and
+   the tab order. Visually hidden, still focusable, still the thing a
+   screen reader and a keyboard both operate. */
+.input {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--color-info);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  height: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-8);
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.option:hover .card {
+  border-color: var(--color-border-strong);
+}
+
+.input:focus-visible + .card {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.input:checked + .card {
+  border-color: var(--color-info);
+  box-shadow: var(--glow-rim);
+}
+
+.swatches {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  flex: none;
+}
+
+.name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-line);
+  color: var(--color-text-primary);
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--text-compact-size);
+  line-height: var(--text-compact-line);
+  color: var(--color-text-secondary);
+}

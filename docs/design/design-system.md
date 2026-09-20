@@ -1,12 +1,17 @@
-> **Superseded in appearance by ADR-026 (the Holographic HUD).**
+> **Superseded in appearance by ADR-026 (the Holographic HUD), and extended
+> by ADR-029 (selectable design worlds).**
 >
 > The scales, roles and rules below still hold — spacing, radius,
 > typography steps, the five semantic colour roles, and the requirement
 > that components reference tokens rather than literals. What changed is
 > every *value*, plus three additions the HUD needs: a signal colour, a
 > glow set, and named motion durations. `app/tokens.css` is the source of
-> truth for values; ADR-026 is the source of truth for why they are what
-> they are.
+> truth for the Holographic HUD's values (the default); `app/design-worlds.css`
+> holds nine more complete value sets, selected by `[data-design]` and
+> switchable per person from `/settings/appearance`. ADR-026 is the source
+> of truth for why the values are what they are; ADR-029 is the source of
+> truth for why there are now ten sets of them, and why every component
+> still only ever reads a token, never a world.
 
 # Design System
 

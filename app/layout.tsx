@@ -1,39 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Chakra_Petch, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { cookies } from "next/headers";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
+import { DEFAULT_DESIGN, DESIGN_COOKIE, designWorld, isSupportedDesign } from "./design-worlds";
+import { fontVariables } from "./fonts";
 import "./globals.css";
-
-/**
- * The three type roles from tokens.css, self-hosted by next/font.
- *
- * Self-hosted rather than linked: this is an application a household runs
- * on their own machine, and a stylesheet fetched from fonts.googleapis.com
- * on every cold load is both a request to a third party on every page view
- * and a dependency on the house having internet at all. `next/font`
- * downloads the files at build time and serves them from the same origin,
- * which also removes the layout shift a late webfont causes.
- */
-const chakra = Chakra_Petch({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-chakra",
-  display: "swap",
-});
-
-const plexSans = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-plex-sans",
-  display: "swap",
-});
-
-const plexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  variable: "--font-plex-mono",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Med Family OS",
@@ -41,22 +12,45 @@ export const metadata: Metadata = {
 };
 
 /**
- * `themeColor` matches the application ground, so the phone's own status
- * bar continues the interface instead of capping it with a white strip.
+ * Reads the design-world cookie, falling back to the Holographic HUD
+ * default — the one path `RootLayout` and `generateViewport` both need,
+ * kept in one place so they cannot disagree (ADR-029 §3).
  */
-export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#04070c" },
-    { media: "(prefers-color-scheme: light)", color: "#eef4f8" },
-  ],
-};
+async function activeDesign() {
+  const store = await cookies();
+  const value = store.get(DESIGN_COOKIE)?.value;
+  return isSupportedDesign(value) ? value : DEFAULT_DESIGN;
+}
+
+/**
+ * A function rather than a static export, so it can read the cookie: the
+ * status bar has to match whichever world is active. The Holographic HUD
+ * keeps its original two-media-query answer; every sealed world (ADR-029
+ * §2) returns its own single, fixed colour from the same registry the
+ * picker's swatches come from.
+ */
+export async function generateViewport(): Promise<Viewport> {
+  const world = designWorld(await activeDesign());
+
+  if (world.appearance === "auto") {
+    return {
+      themeColor: [
+        { media: "(prefers-color-scheme: dark)", color: "#04070c" },
+        { media: "(prefers-color-scheme: light)", color: "#eef4f8" },
+      ],
+    };
+  }
+
+  return { themeColor: world.themeColor };
+}
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();
   const messages = await getMessages();
+  const design = await activeDesign();
 
   return (
-    <html lang={locale} className={`${chakra.variable} ${plexSans.variable} ${plexMono.variable}`}>
+    <html lang={locale} data-design={design} className={fontVariables}>
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
           {children}
