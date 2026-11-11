@@ -5,6 +5,7 @@ import { getLocale, getMessages } from "next-intl/server";
 import { DEFAULT_DESIGN, DESIGN_COOKIE, designWorld, isSupportedDesign } from "./design-worlds";
 import { fontVariables } from "./fonts";
 import "./globals.css";
+import { FamilyIntro } from "../components/brand/FamilyIntro";
 
 export const metadata: Metadata = {
   title: "Med Family OS",
@@ -55,6 +56,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <NextIntlClientProvider locale={locale} messages={messages}>
           {children}
         </NextIntlClientProvider>
+        <FamilyIntro slug="medfamilyos" />
       </body>
     </html>
   );
