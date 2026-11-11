@@ -119,7 +119,7 @@ export const DESIGN_WORLDS: readonly DesignWorld[] = [
     id: "atlas",
     nameKey: "designAtlas",
     descriptionKey: "designAtlasHint",
-    swatches: ["#f7f4ec", "#b8894a", "#3e6e68", "#1f3a3d"],
+    swatches: ["#f7f4ec", "#846234", "#3e6e68", "#1f3a3d"],
     appearance: "light",
     themeColor: "#f7f4ec",
   },
