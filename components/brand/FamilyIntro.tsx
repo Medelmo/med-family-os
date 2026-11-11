@@ -113,8 +113,9 @@ export function FamilyIntro({ slug, src }: { slug: string; src?: string }) {
         style={{
           position: 'absolute',
           bottom: 'max(32px, env(safe-area-inset-bottom))',
-          left: '50%',
-          transform: 'translateX(-50%)',
+          insetInline: 0,
+          marginInline: 'auto',
+          width: 'fit-content',
           padding: '10px 22px',
           borderRadius: 28,
           border: '1px solid #4A9DFF',
